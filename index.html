@@ -181,7 +181,7 @@ main{padding:16px 16px calc(96px + var(--safe-b));max-width:560px;margin:0 auto}
 // Endereço da API (Apps Script publicado como app da Web)
 const LS_K = 'ng_chave', LS_D = 'ng_dados', LS_A = 'ng_api';
 (function () { const h = new URLSearchParams(location.hash.slice(1)); if (h.get('api')) localStorage.setItem(LS_A, h.get('api')); if (h.get('k')) localStorage.setItem(LS_K, h.get('k').toUpperCase()); })();
-const API = localStorage.getItem(LS_A) || '';
+const API = localStorage.getItem(LS_A) || 'https://script.google.com/macros/s/AKfycbwwsXhmrX7bmAaDIj0nTk8NUWSQuNEboqksdKFRZy8KjbhnumJcc4iewzm_Cn3IYIA6FA/exec';
 
 const $ = (s, el = document) => el.querySelector(s);
 const brl = (v, dec = true) => (v < 0 ? '−' : '') + 'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: dec ? 2 : 0, maximumFractionDigits: dec ? 2 : 0 });
