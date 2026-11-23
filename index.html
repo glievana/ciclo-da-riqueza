@@ -410,7 +410,7 @@ function telaCiclo() {
     <div class="legenda"><div class="r"><span>Ciclo da riqueza</span><b>${pct(m.pInvestido)}</b><span>volta como receita</span></div>
       <div class="c"><span>Ciclo do consumo</span><b>${pct(m.pEuMereco)}</b><span>vira padrão de vida</span></div></div>
     ${m.ano ? '' : atalhoMes()}
-    ${prevista ? `<p class="nota">${m.ano ? 'O acumulado usa a receita prevista nos meses sem receita lançada.' : 'A receita deste mês é a prevista: nenhuma receita foi lançada como realizada ainda.'}</p>` : ''}
+    ${prevista ? `<p class="nota">${m.ano ? 'O acumulado usa a receita prevista nos meses sem receita lançada.' : 'A receita deste mês é a prevista: nenhuma receita foi lançada como realizada ainda.'}</p>` : m.base === 'lançada + a receber' ? `<p class="nota">A receita do mês soma o que já entrou e os salários ainda a receber (previstos).</p>` : ''}
     ${(m.aClassificar || 0) > 0 ? `<div class="cartao aviso"><span class="ic">${svg('info')}</span><div><b>${pct(m.pClassificar)} da receita ainda sem ciclo.</b> ${pend ? pend + ' lançamentos' : 'Alguns lançamentos'} precisam de uma categoria do ciclo (coluna Ciclo da planilha).</div></div>` : ''}
     ${(m.pEuMereco || 0) > (m.pInvestido || 0) ? `<div class="cartao aviso alerta"><span class="ic">${svg('alerta')}</span><div><b>O eu mereço passou do investimento.</b> O consumo de hoje vira o padrão de vida de amanhã e come a receita do mês seguinte.</div></div>` : ''}
     <div class="grade">
@@ -438,6 +438,7 @@ function telaMes() {
         <div><span>Sobra</span><b class="${st.c}">${est.soPct ? p(m.sobra) : brl0(m.sobra)}</b><small>${est.soPct ? 'da receita' : 'prevista ' + brl0(m.sobraPrev)}</small></div></div>
       <div style="margin-top:12px">${statusHtml(st.c, st.t)}</div></div>
     ${pd ? `<div class="cartao"><div class="sub">Cabe de despesa por dia até o fim do mês (${pd.dias} dias)</div><div class="num ${pd.c}" style="font-size:30px;font-weight:800;margin:4px 0">${brl(pd.v)}</div>${statusHtml(pd.c, pd.t)}</div>` : ''}
+    ${receitasMes(k)}
     <div class="bloco-t"><h2>Faturas que vencem</h2><span class="sub num">${brl(cm.inter + cm.nubank)}</span></div>
     <div class="cartao" style="margin-top:10px"><ul class="lista">${linhaFatura('Inter', cm.inter, d.cartoes.venc.inter, d.cartoes.limites.inter, k)}${linhaFatura('Nubank', cm.nubank, d.cartoes.venc.nubank, d.cartoes.limites.nubank, k)}</ul></div>
     <div class="bloco-t"><h2>Contas fixas</h2><span class="sub num">${brl(totFix)}</span></div>
@@ -455,6 +456,30 @@ function telaMes() {
     <div class="bloco-t"><h2>Lançamentos</h2></div>
     <input class="busca" id="busca" type="search" placeholder="Buscar por nome, categoria ou ciclo" value="${esc(est.busca)}" aria-label="Buscar lançamentos">
     <div class="cartao" style="margin-top:0"><ul class="lista" id="lancs">${listaLanc()}</ul></div>`;
+}
+
+function receitasMes(k) {
+  const rs = (est.d.receitas || []).filter(x => x.comp === k).sort((a, b) => a.data < b.data ? -1 : 1);
+  if (!rs.length) return '';
+  const ok = rs.filter(x => !x.prev).reduce((s, x) => s + x.valor, 0), falta = rs.filter(x => x.prev).reduce((s, x) => s + x.valor, 0);
+  return `<div class="bloco-t"><h2>Receitas do mês</h2><span class="sub num">${brl(ok + falta)}</span></div>
+    <div class="cartao" style="margin-top:10px"><ul class="lista">${rs.map(x => `<li><span class="marca ${x.prev ? 'risco' : 'ok'}">${svg(x.prev ? 'relogio' : 'check')}</span>
+      <span class="t"><b style="white-space:normal">${esc(x.desc.replace(/ \(previsto\)$/, ''))}</b><small>${x.prev ? 'Prevista para ' + dataBr(x.data) + ' · A realizar' : 'Realizado em ' + dataBr(x.data)}</small>
+      ${x.prev ? `<button class="pilula" style="margin-top:6px" data-conf="${x.linha}" data-v="${x.valor}">${svg('check')}Recebi</button>` : ''}</span>
+      <span class="v ok">${brl(x.valor)}${x.prev ? '<small>previsto</small>' : ''}</span></li>`).join('')}</ul>
+      <p class="nota" style="margin:8px 0 0">Já entrou ${brl(ok)} · a receber ${brl(falta)}. Salário da Adna é trocado sozinho pelo valor real quando cai na conta.</p></div>`;
+}
+async function confirmarReceita(b) {
+  const atual = (+b.dataset.v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const txt = prompt('Quanto entrou de verdade? (R$)', atual); if (txt == null) return;
+  const v = +String(txt).replace(/[^\d,]/g, '').replace(',', '.'); if (!(v > 0)) { toast('Valor inválido'); return; }
+  if (DEMO) { toast('Receita confirmada (demonstração)'); return; }
+  b.disabled = true;
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: chave(), acao: 'confirmar', linha: +b.dataset.conf, valor: v, data: est.d.geradoEm.slice(0, 10) }) });
+    const j = await r.json(); if (!j.ok) throw new Error(j.erro);
+    toast('Receita confirmada na planilha'); carregar();
+  } catch (x) { toast('Não confirmou: ' + (x.message || 'sem conexão')); b.disabled = false; }
 }
 function linhaFatura(nome, v, venc, lim, k) {
   const p = lim ? v / lim * 100 : 0, c = p >= 90 ? 'neg' : p >= 70 ? 'risco' : 'ok';
@@ -607,6 +632,7 @@ async function salvarLanc(e) {
   } catch (x) { err.textContent = 'Não salvou: ' + (x.message || 'sem conexão') + '. Tente de novo.'; b.disabled = false; b.textContent = 'Salvar na planilha'; }
 }
 document.addEventListener('click', async e => {
+  const c = e.target.closest('[data-conf]'); if (c) { confirmarReceita(c); return; }
   const b = e.target.closest('.metas button'); if (!b) return;
   const v = +b.dataset.m;
   if (DEMO) { est.d.ciclo.meta = v; render(); toast('Meta alterada (demonstração)'); return; }
