@@ -162,6 +162,12 @@ main{padding:4px 14px calc(100px + var(--safe-b));max-width:520px;margin:0 auto}
 .folha{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--grafite);border-top:1px solid var(--linha);border-radius:26px 26px 0 0;max-height:92dvh;overflow:auto;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);padding:10px 18px calc(20px + var(--safe-b));max-width:560px;margin:0 auto}
 .folha.on{transform:none}
 .alca{width:40px;height:5px;border-radius:9px;background:var(--linha);margin:0 auto 12px}
+.folha-topo{position:sticky;top:-10px;z-index:2;background:var(--grafite);padding:10px 0 8px;margin:-10px 0 0;touch-action:none}
+.folha-topo .lin{display:flex;align-items:center;justify-content:space-between}
+.fechar{width:38px;height:38px;border-radius:50%;border:1px solid var(--linha);background:var(--carvao);display:grid;place-items:center;color:var(--marfim)}
+.fechar svg{width:18px;height:18px}
+body.travado{overflow:hidden;position:fixed;left:0;right:0}
+button,.per,.aba,.chips button,.metas button{touch-action:manipulation}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--carvao);border-radius:12px;padding:4px;gap:4px;border:1px solid var(--linha)}
 .seg button{border:0;background:none;border-radius:9px;padding:9px 4px;font-size:14px;color:var(--cinza)}
 .seg button[aria-pressed="true"]{background:var(--ouro);color:var(--carvao);font-weight:700}
@@ -221,6 +227,7 @@ const ico = {
   olho: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   olhoX: '<path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.3 6.3C3.6 8.1 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 4.4-1"/>',
   sync: '<path d="M20 11a8 8 0 0 0-14.5-4.5M4 13a8 8 0 0 0 14.5 4.5"/><path d="M5 3v4h4M19 21v-4h-4"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
   sair: '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M5 12h11"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
   alerta: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
@@ -591,7 +598,7 @@ function abrirLanc() {
   const ciclos = (d.listas.ciclos || ['Receita', 'Padrão de vida', 'Investimento', 'Alavancagem', 'Eu mereço']).filter(c => novo.tipo === 'Receita' ? c === 'Receita' : c !== 'Receita');
   const formas = d.listas.formas.filter(f => !/^Cartão/.test(f));
   const seg = (nome, ops, val) => `<div class="seg" role="group" aria-label="${nome}">${ops.map(o => `<button type="button" data-g="${nome}" data-v="${esc(o)}" aria-pressed="${o === val}">${esc(o)}</button>`).join('')}</div>`;
-  $('#folha').innerHTML = `<div class="alca"></div><h2>Novo lançamento</h2>
+  $('#folha').innerHTML = `<div class="folha-topo" id="ftopo"><div class="alca"></div><div class="lin"><h2>Novo lançamento</h2><button type="button" class="fechar" id="fx" aria-label="Fechar">${svg('x', 2.4)}</button></div></div>
     <form id="fn">${seg('tipo', ['Despesa', 'Receita'], novo.tipo)}
     <div class="campo"><label for="lv">Valor</label><input id="lv" class="valor-in" inputmode="decimal" placeholder="R$ 0,00" required></div>
     <div class="campo"><label for="ld">Descrição</label><input id="ld" maxlength="120" placeholder="${novo.tipo === 'Receita' ? 'Ex.: salário, freela' : 'Ex.: feira, farmácia, gás'}" required></div>
@@ -610,11 +617,25 @@ function abrirLanc() {
     b.parentElement.querySelectorAll('[data-g]').forEach(x => x.setAttribute('aria-pressed', x === b));
   });
   $('#lv').oninput = e => { const n = e.target.value.replace(/\D/g, ''); e.target.value = n ? 'R$ ' + (+n / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : ''; };
-  $('#lc').onclick = fecharLanc; $('#fn').onsubmit = salvarLanc;
+  $('#lc').onclick = fecharLanc; $('#fx').onclick = fecharLanc; $('#fn').onsubmit = salvarLanc;
+  arrastarParaFechar($('#ftopo'));
+  if (!$('#folha').classList.contains('on')) { est.rolagem = scrollY; document.body.style.top = -est.rolagem + 'px'; document.body.classList.add('travado'); }
   $('#veu').classList.add('on'); $('#folha').classList.add('on');
 }
 function abrirLancManter() { const v = $('#lv').value, ds = $('#ld').value, f = $('#lf').value, t = $('#lt').value; novo.forma = f; abrirLanc(); $('#lv').value = v; $('#ld').value = ds; $('#lt').value = t; }
-function fecharLanc() { $('#veu').classList.remove('on'); $('#folha').classList.remove('on'); }
+function fecharLanc() {
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const f = $('#folha'); f.style.transform = ''; f.classList.remove('on'); $('#veu').classList.remove('on');
+  if (document.body.classList.contains('travado')) { document.body.classList.remove('travado'); document.body.style.top = ''; scrollTo(0, est.rolagem || 0); }
+}
+// puxar a alça para baixo fecha a folha (como nos apps do iPhone)
+function arrastarParaFechar(el) {
+  const f = $('#folha'); let y0 = null, dy = 0;
+  el.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; dy = 0; f.style.transition = 'none'; }, { passive: true });
+  el.addEventListener('touchmove', e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); f.style.transform = 'translateY(' + dy + 'px)'; }, { passive: true });
+  el.addEventListener('touchend', () => { f.style.transition = ''; if (dy > 90) fecharLanc(); else f.style.transform = ''; y0 = null; });
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#folha') && $('#folha').classList.contains('on')) fecharLanc(); });
 async function salvarLanc(e) {
   e.preventDefault();
   const valor = +($('#lv').value.replace(/\D/g, '')) / 100, err = $('#lerr');
@@ -634,14 +655,15 @@ async function salvarLanc(e) {
 document.addEventListener('click', async e => {
   const c = e.target.closest('[data-conf]'); if (c) { confirmarReceita(c); return; }
   const b = e.target.closest('.metas button'); if (!b) return;
-  const v = +b.dataset.m;
-  if (DEMO) { est.d.ciclo.meta = v; render(); toast('Meta alterada (demonstração)'); return; }
-  b.disabled = true;
+  const v = +b.dataset.m, antes = est.d.ciclo.meta;
+  if (Math.abs(v - antes) < 1e-6) return;
+  est.d.ciclo.meta = v; render();              // muda na hora; a planilha é gravada em segundo plano
+  if (DEMO) { toast('Meta alterada (demonstração)'); return; }
   try {
     const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: chave(), acao: 'meta', meta: v }) });
     const j = await r.json(); if (!j.ok) throw new Error(j.erro);
-    toast('Meta salva na planilha: ' + pct(v)); carregar();
-  } catch (x) { toast('Não salvou a meta: ' + (x.message || 'sem conexão')); b.disabled = false; }
+    toast('Meta salva: ' + pct(v)); carregar();
+  } catch (x) { est.d.ciclo.meta = antes; render(); toast('Não salvou a meta: ' + (x.message || 'sem conexão')); }
 });
 
 (function iniciar() {
