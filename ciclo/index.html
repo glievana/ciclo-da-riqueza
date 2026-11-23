@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ciclo da Riqueza</title>
+<meta name="theme-color" content="#0D0C0B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ciclo da Riqueza">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --carvao:#0D0C0B; --grafite:#191613; --grafite2:#24201B; --linha:#34302A;
+  --ouro:#E4A73C; --ouro2:#F2CF86; --rubi:#D04A3F; --rubi2:#F08A7E; --cinza:#9A9187; --marfim:#F3EDE3;
+  --verde:#4FB37A;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+  --tit:'Archivo',-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--carvao);color:var(--marfim);font:16px/1.45 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100dvh;overscroll-behavior-y:none}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ouro);outline-offset:2px}
+.num{font-family:var(--tit);font-variant-numeric:tabular-nums}
+h1,h2{font-family:var(--tit);margin:0;font-stretch:85%;letter-spacing:-.01em}
+h2{font-size:20px;font-weight:700}
+.sub{color:var(--cinza);font-size:14px}
+
+.topo{position:sticky;top:0;z-index:5;background:linear-gradient(var(--carvao) 80%,rgba(13,12,11,0));padding:calc(var(--safe-t) + 12px) 0 10px}
+.topo-l{display:flex;align-items:center;justify-content:space-between;padding:0 18px 10px}
+.topo h1{font-size:23px;font-weight:800;color:var(--ouro)}
+.olho{display:flex;align-items:center;gap:7px;border:1px solid var(--linha);background:var(--grafite);border-radius:999px;padding:7px 12px;font-size:13px;color:var(--marfim)}
+.olho svg{width:17px;height:17px}
+.olho[aria-pressed="true"]{border-color:var(--ouro);color:var(--ouro)}
+.periodos{display:flex;gap:8px;overflow-x:auto;padding:0 18px 4px;scrollbar-width:none}
+.periodos::-webkit-scrollbar{display:none}
+.per{flex:0 0 auto;border:1px solid var(--linha);background:transparent;color:var(--cinza);border-radius:999px;padding:7px 14px;font-size:14px;white-space:nowrap}
+.per.fut{font-style:italic}
+.per[aria-pressed="true"]{background:var(--ouro);border-color:var(--ouro);color:var(--carvao);font-weight:700}
+.per.ano{color:var(--ouro);border-color:rgba(228,167,60,.5)}
+.per.ano[aria-pressed="true"]{color:var(--carvao)}
+
+main{padding:6px 14px calc(96px + var(--safe-b));max-width:520px;margin:0 auto}
+.tela{display:none}.tela.on{display:block}
+.cartao{background:var(--grafite);border:1px solid var(--linha);border-radius:18px;padding:16px;margin-top:14px}
+.aviso{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--marfim)}
+.aviso b{color:var(--ouro)}
+.aviso.alerta{border-color:rgba(208,74,63,.6)}
+.aviso.alerta b{color:var(--rubi2)}
+.aviso .ic{flex:0 0 22px;height:22px;color:var(--ouro)}
+.aviso.alerta .ic{color:var(--rubi2)}
+
+/* diagrama */
+.diagrama{display:block;width:100%;height:auto}
+.diagrama .cx rect{rx:12}
+.diagrama .tt{font:800 14px var(--tit);font-stretch:85%;letter-spacing:.02em}
+.diagrama .st{font:11.5px -apple-system,system-ui,sans-serif}
+.diagrama .pv{font:800 22px var(--tit);font-variant-numeric:tabular-nums}
+.diagrama .rv{font:12px -apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.loop{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.desenha{stroke-dasharray:1400;stroke-dashoffset:1400;animation:desenha 1.6s .2s cubic-bezier(.3,.7,.2,1) forwards}
+@keyframes desenha{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.desenha{animation:none;stroke-dashoffset:0}}
+.legenda{display:flex;justify-content:space-between;gap:10px;margin-top:6px;font-size:13px}
+.legenda div{flex:1;border-radius:12px;padding:10px 12px;background:var(--grafite)}
+.legenda .r{border:1px solid rgba(228,167,60,.45)}
+.legenda .c{border:1px solid rgba(208,74,63,.5);text-align:right}
+.legenda b{display:block;font-family:var(--tit);font-size:22px;font-weight:800}
+.legenda .r b{color:var(--ouro)}.legenda .c b{color:var(--rubi2)}
+.legenda span{color:var(--cinza)}
+
+.destaque{display:flex;align-items:center;gap:16px}
+.anel{flex:0 0 112px}
+.destaque .grande{font-family:var(--tit);font-size:40px;font-weight:800;line-height:1;color:var(--ouro)}
+.destaque .grande.baixo{color:var(--rubi2)}
+.barra{height:10px;border-radius:99px;background:var(--grafite2);position:relative;margin-top:10px;overflow:visible}
+.barra i{display:block;height:100%;border-radius:99px;background:var(--ouro);transition:width .8s}
+.barra .meta{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--marfim);border-radius:2px}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.grade div{background:var(--grafite);border:1px solid var(--linha);border-radius:14px;padding:12px}
+.grade span{font-size:13px;color:var(--cinza)}
+.grade b{display:block;font-family:var(--tit);font-size:24px;font-weight:800;line-height:1.15}
+.grade small{color:var(--cinza);font-size:12px}
+
+.selos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.selo{border-radius:14px;padding:14px 8px;text-align:center;border:1px dashed var(--linha);color:var(--cinza)}
+.selo b{display:block;font-family:var(--tit);font-size:26px;font-weight:800}
+.selo.ok{border:1px solid var(--ouro);color:var(--ouro);background:rgba(228,167,60,.08)}
+.graf{display:block;width:100%;height:auto}
+.graf text{font:11px -apple-system,system-ui,sans-serif;fill:var(--cinza)}
+.leg{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:var(--cinza);margin-top:8px}
+.leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:4px}
+.metas{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.metas button{border:1px solid var(--linha);background:var(--grafite2);border-radius:999px;padding:8px 14px;font-size:14px}
+.metas button[aria-pressed="true"]{border-color:var(--ouro);color:var(--ouro)}
+
+.abas{position:fixed;left:0;right:0;bottom:0;z-index:6;background:rgba(13,12,11,.92);backdrop-filter:blur(14px);border-top:1px solid var(--linha);display:grid;grid-template-columns:1fr 1fr;padding:6px 16px calc(8px + var(--safe-b))}
+.aba{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--cinza);padding:6px 0}
+.aba svg{width:25px;height:25px}
+.aba[aria-current="page"]{color:var(--ouro);font-weight:600}
+
+.entrada{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:calc(var(--safe-t) + 30px) 26px calc(var(--safe-b) + 30px)}
+.entrada h1{font-size:40px;color:var(--ouro);line-height:1.05}
+.entrada p{color:var(--cinza)}
+.entrada input{width:100%;border:1px solid var(--linha);background:var(--grafite);border-radius:14px;padding:15px;font-size:18px;text-align:center;letter-spacing:.08em;text-transform:uppercase;margin-top:18px}
+.btn{width:100%;border:0;border-radius:14px;padding:15px;font-weight:700;font-size:16px;background:var(--ouro);color:var(--carvao);margin-top:14px}
+.erro{color:var(--rubi2);font-size:14px;min-height:1em}
+.toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-b));transform:translate(-50%,20px);background:var(--marfim);color:var(--carvao);padding:12px 18px;border-radius:14px;font-size:14px;opacity:0;transition:.25s;z-index:20;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.nota{font-size:12.5px;color:var(--cinza);margin:12px 4px 0}
+</style>
+</head>
+<body>
+<div id="raiz"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+'use strict';
+const LS_K = 'ng_chave', LS_A = 'ng_api', LS_P = 'cr_so_pct', LS_D = 'cr_dados';
+(function () { const h = new URLSearchParams(location.hash.slice(1)); if (h.get('api')) localStorage.setItem(LS_A, h.get('api')); if (h.get('k')) localStorage.setItem(LS_K, h.get('k').toUpperCase()); })();
+const API = localStorage.getItem(LS_A) || 'https://script.google.com/macros/s/AKfycbwwsXhmrX7bmAaDIj0nTk8NUWSQuNEboqksdKFRZy8KjbhnumJcc4iewzm_Cn3IYIA6FA/exec';
+const DEMO = location.search.includes('demo');
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const MESL = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const nomeMes = (k, longo) => { const [a, m] = k.split('-').map(Number); return longo ? MESL[m - 1] + ' de ' + a : MES[m - 1] + '/' + String(a).slice(2); };
+const pct = (v, d = 0) => v == null || !isFinite(v) ? '—' : (v < 0 ? '−' : '') + (Math.abs(v) * 100).toFixed(d).replace('.', ',') + '%';
+const brl = v => v == null ? '—' : (v < 0 ? '−' : '') + 'R$ ' + Math.abs(Math.round(v)).toLocaleString('pt-BR');
+const ico = {
+  ciclo: '<path d="M20 12a8 8 0 0 1-13.7 5.6M4 12a8 8 0 0 1 13.7-5.6"/><path d="M18 3v4h-4M6 21v-4h4"/>',
+  trofeu: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/>',
+  olho: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  olhoX: '<path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.3 6.3C3.6 8.1 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 4.4-1"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+  alerta: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
+};
+const svg = (n, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ico[n]}</svg>`;
+
+const est = { d: null, per: null, tela: 'ciclo', soPct: localStorage.getItem(LS_P) !== '0' };
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2600); }
+const chave = () => localStorage.getItem(LS_K) || '';
+
+async function buscar() {
+  if (DEMO) return (await (await fetch('demo.json')).json()).dados;
+  const r = await fetch(API + '?k=' + encodeURIComponent(chave()) + '&t=' + Date.now());
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.erro === 'chave' ? 'chave' : j.erro || 'Falha ao ler a planilha');
+  if (!j.dados.ciclo) throw new Error('A planilha ainda não tem a aba Ciclo publicada.');
+  return j.dados;
+}
+async function carregar() {
+  try {
+    const d = await buscar(); est.d = d; try { localStorage.setItem(LS_D, JSON.stringify(d)); } catch (x) {}
+    if (!est.per) est.per = d.mesAtual;
+    render();
+  } catch (e) {
+    if (e.message === 'chave') { localStorage.removeItem(LS_K); entrada('Essa chave não abriu a planilha.'); return; }
+    if (est.d) { render(); toast('Sem conexão: mostrando os últimos números'); } else entrada(e.message);
+  }
+}
+function entrada(msg) {
+  $('#raiz').innerHTML = `<section class="entrada"><h1>Ciclo da Riqueza</h1>
+    <p>Para onde vai a sua receita: padrão de vida, investimento ou consumo. Digite a chave de acesso para abrir.</p>
+    <form id="fk"><input id="k" aria-label="Chave de acesso" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX" required>
+    <button class="btn" type="submit">Abrir</button><p class="erro">${msg ? esc(msg) : ''}</p></form></section>`;
+  $('#fk').onsubmit = e => { e.preventDefault(); localStorage.setItem(LS_K, $('#k').value.trim().toUpperCase()); montar(); carregar(); };
+}
+function montar() {
+  $('#raiz').innerHTML = `<header class="topo"><div class="topo-l"><h1>Ciclo da Riqueza</h1>
+      <button class="olho" id="olho"></button></div><nav class="periodos" id="per" aria-label="Escolher período"></nav></header>
+    <main id="main"></main>
+    <nav class="abas" aria-label="Telas"><button class="aba" data-t="ciclo">${svg('ciclo')}Ciclo</button><button class="aba" data-t="desafio">${svg('trofeu')}Desafio</button></nav>`;
+  document.querySelectorAll('.aba').forEach(b => b.onclick = () => { est.tela = b.dataset.t; render(); scrollTo(0, 0); });
+  $('#olho').onclick = () => { est.soPct = !est.soPct; localStorage.setItem(LS_P, est.soPct ? '1' : '0'); render(); };
+}
+
+// dados do período escolhido
+function periodo() {
+  const c = est.d.ciclo;
+  if (est.per === 'ano') return Object.assign({ ano: true }, c.acumulado);
+  return c.meses.find(m => m.mes === est.per) || c.meses[0];
+}
+const realizados = () => est.d.ciclo.meses.filter(m => m.receita != null);
+
+function render() {
+  if (!est.d) return; if (!$('#main')) montar();
+  const c = est.d.ciclo;
+  $('#olho').innerHTML = est.soPct ? svg('olhoX') + 'Só %' : svg('olho') + 'R$ e %';
+  $('#olho').setAttribute('aria-pressed', est.soPct);
+  $('#olho').setAttribute('aria-label', est.soPct ? 'Mostrando só porcentagens. Toque para mostrar valores em reais' : 'Mostrando valores. Toque para mostrar só porcentagens');
+  $('#per').innerHTML = `<button class="per ano" data-p="ano" aria-pressed="${est.per === 'ano'}">${esc(c.acumulado.rotulo || 'Ano')}</button>` +
+    c.meses.map(m => `<button class="per ${m.receita == null ? 'fut' : ''}" data-p="${m.mes}" aria-pressed="${m.mes === est.per}">${nomeMes(m.mes)}</button>`).join('');
+  $('#per').querySelectorAll('.per').forEach(b => b.onclick = () => { est.per = b.dataset.p; render(); });
+  document.querySelectorAll('.aba').forEach(b => b.dataset.t === est.tela ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+  $('#main').innerHTML = est.tela === 'ciclo' ? telaCiclo() : telaDesafio();
+}
+
+// ---------------- TELA: CICLO
+function caixa(x, y, w, h, tipo, titulo, sub, p, v) {
+  const cor = { ouro: '#E4A73C', rubi: '#D04A3F', neutro: '#9A9187', cheio: '#E4A73C' }[tipo];
+  const cheio = tipo === 'cheio';
+  const txt = cheio ? '#0D0C0B' : '#F3EDE3', sb = cheio ? '#3A2A0E' : '#9A9187';
+  const temV = v != null && !est.soPct;
+  return `<g class="cx"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${cheio ? cor : '#191613'}" stroke="${cor}" stroke-width="${cheio ? 0 : 1.6}"/>
+    <text class="tt" x="${x + 14}" y="${y + 25}" fill="${txt}">${titulo}</text>
+    <text class="st" x="${x + 14}" y="${y + 45}" fill="${sb}">${temV ? brl(v) : sub}</text>
+    ${p != null ? `<text class="pv" x="${x + w - 12}" y="${y + 47}" text-anchor="end" fill="${cheio ? '#0D0C0B' : cor === '#9A9187' ? '#F3EDE3' : cor}">${p}</text>` : ''}
+    </g>`;
+}
+function seta(x1, y1, x2, y2, cor = '#E4A73C') { return `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="${cor}" stroke-width="1.6" fill="none" marker-end="url(#pt${cor === '#E4A73C' ? 'o' : 'c'})"/>`; }
+
+function telaCiclo() {
+  const m = periodo(), fut = m.receita == null;
+  const R = m.receita || 0, div = v => (R && v != null ? v / R : null);
+  const pInv = div(m.investimento), pAlav = div(m.alavancagem);
+  const wRiq = fut ? 0 : (m.pInvestido || 0), wCon = fut ? 0 : (m.pEuMereco || 0);
+  const sw = w => (1.6 + Math.min(1, w / 0.4) * 7).toFixed(1), op = w => (0.25 + Math.min(1, w / 0.3) * 0.75).toFixed(2);
+  const W = 380, bx = 90, bw = 200;
+  const dia = `<svg class="diagrama" viewBox="0 0 ${W} 470" role="img" aria-label="Diagrama do ciclo do dinheiro com a porcentagem de cada etapa">
+    <defs>
+      <marker id="pto" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9z" fill="#E4A73C"/></marker>
+      <marker id="ptc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9z" fill="#9A9187"/></marker>
+      <marker id="ptr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9z" fill="#D04A3F"/></marker>
+      <filter id="brilho" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3.5"/></filter>
+    </defs>
+    <!-- ciclo da riqueza (dourado) -->
+    <g opacity="${op(wRiq)}">
+      <path d="M16 314 H6 V38 H${bx - 4}" class="loop" stroke="#E4A73C" stroke-width="${sw(wRiq)}" filter="url(#brilho)" opacity=".6"/>
+      <path class="loop desenha" d="M18 314 H8 V38 H${bx - 6}" stroke="#E4A73C" stroke-width="${sw(wRiq)}" marker-end="url(#pto)"/>
+      <path class="loop desenha" d="M18 424 H8 V314" stroke="#E4A73C" stroke-width="${sw(wRiq)}"/>
+    </g>
+    <!-- ciclo do consumo (vermelho) -->
+    <g opacity="${op(wCon)}">
+      <path d="M${W - 18} 424 H${W - 6} V124 H${bx + bw + 4}" class="loop" stroke="#D04A3F" stroke-width="${sw(wCon)}" filter="url(#brilho)" opacity=".6"/>
+      <path class="loop desenha" d="M${W - 18} 424 H${W - 8} V124 H${bx + bw + 6}" stroke="#D04A3F" stroke-width="${sw(wCon)}" marker-end="url(#ptr)"/>
+    </g>
+    ${seta(190, 66, 190, 94)}${seta(190, 152, 190, 180)}
+    <path d="M190 238 V256 M100 256 H280" stroke="#E4A73C" stroke-width="1.6" fill="none"/>${seta(100, 256, 100, 282)}${seta(280, 256, 280, 282)}
+    <path d="M280 344 V362 M100 362 H280" stroke="#9A9187" stroke-width="1.6" fill="none"/>${seta(100, 362, 100, 392, '#9A9187')}${seta(280, 362, 280, 392, '#9A9187')}
+    ${caixa(bx, 8, bw, 58, 'cheio', 'RECEITA', 'trabalho + ativos', fut ? null : '100%', m.receita)}
+    ${caixa(bx, 94, bw, 58, 'rubi', 'PADRÃO DE VIDA', 'custo mensal da vida', fut ? null : pct(m.pCusto), m.padrao)}
+    ${caixa(bx, 180, bw, 58, 'ouro', 'RESULTADO', 'o que sobra', fut ? null : pct(m.pResultado), m.resultado)}
+    ${caixa(18, 284, 168, 60, 'ouro', 'INVESTIMENTO', 'ativos', fut ? null : pct(pInv), m.investimento)}
+    ${caixa(196, 284, 166, 60, 'neutro', 'DÍVIDAS', 'uso do crédito', null, null)}
+    ${caixa(18, 394, 168, 60, 'ouro', 'ALAVANCAGEM', 'crédito → ativo', fut ? null : pct(pAlav), m.alavancagem)}
+    ${caixa(196, 394, 166, 60, 'rubi', 'EU MEREÇO', 'consumo', fut ? null : pct(m.pEuMereco), m.euMereco)}
+  </svg>`;
+
+  if (fut) {
+    const comp = m.comprometido || 0, prev = m.receitaPrevista || 0;
+    return `${dia}<div class="cartao aviso"><span class="ic">${svg('info')}</span><div><b>${esc(nomeMes(m.mes, true))} ainda não aconteceu.</b>
+      ${prev ? ` ${pct(comp / prev)} da receita prevista já está comprometida com parcelas e contas a pagar${est.soPct ? '' : ` (${brl(comp)} de ${brl(prev)})`}.` : ''}</div></div>`;
+  }
+  const pend = m.pendentes && m.pendentes.realizado ? m.pendentes.realizado : 0;
+  const alerta = (m.pEuMereco || 0) > (m.pInvestido || 0);
+  return `${dia}
+    <div class="legenda"><div class="r"><span>Ciclo da riqueza</span><b>${pct(m.pInvestido)}</b><span>volta como receita</span></div>
+      <div class="c"><span>Ciclo do consumo</span><b>${pct(m.pEuMereco)}</b><span>vira padrão de vida</span></div></div>
+    ${m.base === 'prevista' ? `<p class="nota">Receita deste período é a prevista: nenhuma receita foi lançada como realizada ainda.</p>` : ''}
+    ${(m.aClassificar || 0) > 0 ? `<div class="cartao aviso"><span class="ic">${svg('info')}</span><div><b>${pct(m.pClassificar)} da receita ainda sem ciclo.</b> ${pend ? pend + ' lançamentos' : 'Alguns lançamentos'} precisam de uma categoria do ciclo na planilha (coluna Ciclo).${est.soPct ? '' : ' ' + brl(m.aClassificar) + '.'}</div></div>` : ''}
+    ${alerta ? `<div class="cartao aviso alerta"><span class="ic">${svg('alerta')}</span><div><b>O eu mereço passou do investimento.</b> O consumo de hoje vira o padrão de vida de amanhã e come a receita do mês seguinte.</div></div>` : ''}
+    <div class="grade">
+      <div><span>Custo de vida</span><b>${pct(m.pCusto)}</b><small>${est.soPct ? 'da receita' : brl(m.padrao)}</small></div>
+      <div><span>Resultado</span><b>${pct(m.pResultado)}</b><small>${est.soPct ? 'da receita' : brl(m.resultado)}</small></div>
+      <div><span>Investido</span><b style="color:var(--ouro)">${pct(m.pInvestido)}</b><small>meta ${pct(est.d.ciclo.meta)}</small></div>
+      <div><span>Saldo livre</span><b>${pct(m.pLivre)}</b><small>${est.soPct ? 'resultado sem destino' : brl(m.saldoLivre)}</small></div>
+    </div>
+    <p class="nota">Só entra o que já foi realizado. Compras no cartão contam no mês da fatura.</p>`;
+}
+
+// ---------------- TELA: DESAFIO
+function telaDesafio() {
+  const c = est.d.ciclo, meta = c.meta, reais = realizados();
+  const m = est.per === 'ano' ? Object.assign({ ano: true }, c.acumulado) : (periodo().receita == null ? (reais[reais.length - 1] || periodo()) : periodo());
+  const p = m.pInvestido, temDado = p != null;
+  const r = 46, circ = 2 * Math.PI * r, fr = temDado ? Math.max(0, Math.min(1, p / Math.max(meta, 0.0001))) : 0;
+  const falta = temDado ? Math.max(0, meta - p) : null;
+  const seq = Math.max(0, ...c.meses.map(x => x.sequencia || 0));
+  const atual = reais.length ? (reais[reais.length - 1].sequencia || 0) : 0;
+  const anterior = reais.length > 1 ? reais[reais.length - 2] : null, ultimo = reais[reais.length - 1];
+  let compara = 'A comparação com o mês anterior aparece quando houver dois meses realizados.';
+  if (anterior && ultimo && ultimo.pCusto != null && anterior.pCusto != null) {
+    const dlt = Math.round((ultimo.pCusto - anterior.pCusto) * 100);
+    compara = dlt === 0 ? 'Seu custo de vida ficou igual ao mês anterior.' : `Seu custo de vida ${dlt < 0 ? 'caiu' : 'subiu'} ${Math.abs(dlt)} ${Math.abs(dlt) === 1 ? 'ponto' : 'pontos'} em relação a ${nomeMes(anterior.mes, true).split(' de ')[0]}.`;
+  }
+  // gráfico de evolução
+  const ms = c.meses, W = 340, H = 180, top = 12, base = H - 26, x = i => 16 + i * ((W - 32) / (ms.length - 1));
+  const vals = ms.flatMap(m2 => [m2.pInvestido, m2.pCusto]).filter(v => v != null);
+  const maxv = Math.max(meta * 1.5, ...vals, 0.2), y = v => base - (v / maxv) * (base - top);
+  const linha = k => { let s = '', on = false; ms.forEach((m2, i) => { if (m2[k] == null) { on = false; return; } s += (on ? ' L' : ' M') + x(i).toFixed(1) + ' ' + y(m2[k]).toFixed(1); on = true; }); return s; };
+  const pts = (k, cor) => ms.map((m2, i) => m2[k] == null ? '' : `<circle cx="${x(i)}" cy="${y(m2[k])}" r="4" fill="${cor}"/>`).join('');
+  const graf = `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução mensal do percentual investido e do custo de vida">
+    <line x1="10" x2="${W - 10}" y1="${y(meta)}" y2="${y(meta)}" stroke="#F3EDE3" stroke-dasharray="4 5" opacity=".5"/>
+    <text x="${W - 10}" y="${y(meta) - 6}" text-anchor="end">meta ${pct(meta)}</text>
+    <path d="${linha('pCusto')}" fill="none" stroke="#D04A3F" stroke-width="2.5"/>${pts('pCusto', '#D04A3F')}
+    <path d="${linha('pInvestido')}" fill="none" stroke="#E4A73C" stroke-width="2.5"/>${pts('pInvestido', '#E4A73C')}
+    ${ms.map((m2, i) => i % 2 ? '' : `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${MES[+m2.mes.slice(5) - 1]}</text>`).join('')}</svg>`;
+  return `<div class="cartao"><div class="destaque">
+      <svg class="anel" viewBox="0 0 112 112" aria-hidden="true"><circle cx="56" cy="56" r="${r}" fill="none" stroke="#24201B" stroke-width="12"/>
+        ${fr > 0 ? '' : '<!--'}<circle cx="56" cy="56" r="${r}" fill="none" stroke="${fr >= 1 ? '#E4A73C' : '#D04A3F'}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(circ * fr).toFixed(1)} ${circ.toFixed(1)}" transform="rotate(-90 56 56)"/>${fr > 0 ? '' : '-->'}
+        <text x="56" y="62" text-anchor="middle" fill="#F3EDE3" style="font:800 20px Archivo,system-ui">${temDado ? Math.round(fr * 100) + '%' : '—'}</text></svg>
+      <div><div class="sub">${m.ano ? 'No ano, investido da receita' : 'Investido em ' + (m.mes ? nomeMes(m.mes, true).split(' de ')[0] : '')}</div>
+        <div class="grande ${fr >= 1 ? '' : 'baixo'}">${pct(p, 1)}</div>
+        <div class="sub">${!temDado ? 'Sem receita realizada neste período.' : fr >= 1 ? 'Meta batida. Continue no ciclo da riqueza.' : `Faltam ${(falta * 100).toFixed(1).replace('.', ',')} pontos para a meta de ${pct(meta)}.`}</div></div></div>
+      <div class="barra" aria-hidden="true"><i style="width:${(Math.min(1, (p || 0) / (meta * 2)) * 100).toFixed(1)}%"></i><span class="meta" style="left:50%"></span></div>
+      <div class="metas" role="group" aria-label="Escolher a meta">${[0.1, 0.15, 0.2, 0.3].map(v => `<button data-m="${v}" aria-pressed="${Math.abs(v - meta) < 0.001}">${pct(v)}</button>`).join('')}</div>
+    </div>
+    <div class="cartao"><h2>Sequência na meta</h2>
+      <p class="sub" style="margin:4px 0 0">${atual ? `${atual} ${atual === 1 ? 'mês seguido' : 'meses seguidos'} investindo pelo menos ${pct(meta)} da receita.` : `Nenhum mês na meta ainda. O primeiro selo vem com 3 meses seguidos.`}</p>
+      <div class="selos">${[3, 6, 12].map(n => `<div class="selo ${seq >= n ? 'ok' : ''}"><b>${n}</b>meses</div>`).join('')}</div></div>
+    <div class="cartao"><h2>Evolução mês a mês</h2>${graf}
+      <div class="leg"><span><i style="background:#E4A73C"></i>% investido</span><span><i style="background:#D04A3F"></i>% custo de vida</span></div>
+      <p class="sub" style="margin:10px 0 0">${compara}</p></div>
+    <div class="cartao aviso"><span class="ic">${svg('info')}</span><div>${informativo(m)}</div></div>
+    <p class="nota">Conteúdo educativo: o app mostra o ciclo e acompanha metas, mas não recomenda investimentos.</p>`;
+}
+function informativo(m) {
+  if (m.pInvestido == null) return '<b>Como funciona.</b> A receita paga primeiro o padrão de vida. O que sobra é o resultado, e ele tem dois destinos: ativos ou consumo.';
+  if ((m.pEuMereco || 0) > (m.pInvestido || 0)) return '<b>Eu mereço acima do investimento.</b> Cada real de consumo hoje tende a virar padrão de vida amanhã. Antes do próximo "eu mereço", separe a meta do mês para investir.';
+  if ((m.pCusto || 0) > 0.7) return '<b>Custo de vida alto.</b> Quando o padrão de vida passa de 70% da receita, sobra pouco para decidir. Vale olhar as três maiores contas fixas.';
+  return '<b>No ciclo da riqueza.</b> Investimento vira ativo, ativo vira receita nova. Subir a meta aos poucos acelera esse giro.';
+}
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('.metas button'); if (!b) return;
+  const v = +b.dataset.m;
+  if (DEMO) { est.d.ciclo.meta = v; render(); toast('Meta alterada (demonstração)'); return; }
+  b.disabled = true;
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: chave(), acao: 'meta', meta: v }) });
+    const j = await r.json(); if (!j.ok) throw new Error(j.erro);
+    toast('Meta salva na planilha: ' + pct(v)); carregar();
+  } catch (x) { toast('Não salvou a meta: ' + (x.message || 'sem conexão')); b.disabled = false; }
+});
+
+(function iniciar() {
+  try { est.d = JSON.parse(localStorage.getItem(LS_D) || 'null'); } catch (x) { est.d = null; }
+  if (!chave() && !DEMO) { entrada(); return; }
+  if (est.d && est.d.ciclo) { est.per = est.d.mesAtual; montar(); render(); }
+  carregar();
+})();
+</script>
+</body>
+</html>
