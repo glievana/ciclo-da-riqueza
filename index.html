@@ -204,6 +204,25 @@ button,.per,.aba,.chips button,.metas button{touch-action:manipulation}
 .cartao h3{font-family:var(--tit);font-size:16px;margin:0 0 4px}
 .aviso.pague{border-color:rgba(228,167,60,.6);background:linear-gradient(135deg,#231C10,#191613)}
 .aviso.pague .btn{padding:12px}
+.clic{cursor:pointer;-webkit-tap-highlight-color:rgba(228,167,60,.15)}
+.lista li.clic:active,.cat.clic:active{background:rgba(255,255,255,.03)}
+.seta-d{color:var(--cinza);font-size:20px;margin-left:-4px}
+.lista li.dia{display:block;padding:14px 0 6px;font-size:12.5px;color:var(--ouro);text-transform:none;border-top:0;font-weight:600}
+.lista.extrato li.dia:first-child{padding-top:4px}
+.ext-topo{display:flex;justify-content:space-between;align-items:flex-end;margin-top:4px}
+.grande-ext{font-family:var(--tit);font-size:32px;font-weight:800;line-height:1.1;margin:2px 0}
+.ext-ciclos{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:12px}
+.ext-ciclos div{background:var(--carvao);border:1px solid var(--linha);border-radius:12px;padding:8px 10px}
+.ext-ciclos span{display:block;font-size:12px;color:var(--cinza)} .ext-ciclos b{font-family:var(--tit);font-size:18px} .ext-ciclos b.ouro{color:var(--ouro)}
+.ext-ciclos small{display:block;font-size:11.5px;color:var(--cinza)}
+.voltar{border:0;background:none;color:var(--ouro);font-size:16px;font-weight:600;padding:6px 0}
+.det-topo{margin-top:6px}
+.det-topo .valor-in{width:100%;border:1px solid var(--linha);background:var(--carvao);border-radius:14px;padding:12px;font:800 30px var(--tit);color:var(--marfim);margin-top:6px;text-align:center}
+.det-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.det-info div{background:var(--carvao);border:1px solid var(--linha);border-radius:12px;padding:9px 11px}
+.det-info span{display:block;font-size:12px;color:var(--cinza)} .det-info b{font-size:14.5px}
+.cc .ver-ext{margin-left:auto;font-size:13px;font-weight:600;color:var(--ouro)}
+.campo input:disabled,.campo select:disabled{opacity:.55}
 /* fila de classificação e antes de comprar */
 .entrada-rapida{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .entrada-rapida button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--grafite);border:1px solid var(--linha);border-radius:16px;padding:13px;color:var(--marfim);font-size:15px;font-weight:700}
@@ -406,7 +425,8 @@ function caixa(x, y, w, h, tipo, titulo, sub, p, v) {
   const cor = { ouro: '#E4A73C', rubi: '#D04A3F', neutro: '#9A9187', cheio: '#E4A73C' }[tipo], cheio = tipo === 'cheio';
   const txt = cheio ? '#0D0C0B' : '#F3EDE3', sb = cheio ? '#3A2A0E' : '#9A9187';
   const linha2 = v != null && !est.soPct ? brl0(v) : sub;
-  return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${cheio ? cor : '#191613'}" stroke="${cor}" stroke-width="${cheio ? 0 : 1.6}"/>
+  const cic = { 'PADRÃO DE VIDA': 'Padrão de vida', 'INVESTIMENTO': 'Investimento', 'ALAVANCAGEM': 'Alavancagem', 'EU MEREÇO': 'Eu mereço' }[titulo];
+  return `<g ${cic ? `data-cic="${cic}" class="clic"` : ''}><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${cheio ? cor : '#191613'}" stroke="${cor}" stroke-width="${cheio ? 0 : 1.6}"/>
     <text class="tt" x="${x + 14}" y="${y + 25}" fill="${txt}">${titulo}</text><text class="st" x="${x + 14}" y="${y + 45}" fill="${sb}">${esc(linha2)}</text>
     ${p != null ? `<text class="pv" x="${x + w - 12}" y="${y + 47}" text-anchor="end" fill="${cheio ? '#0D0C0B' : cor === '#9A9187' ? '#F3EDE3' : cor}">${p}</text>` : ''}</g>`;
 }
@@ -494,15 +514,15 @@ function telaMes() {
     <div class="bloco-t"><h2>Faturas que vencem</h2><span class="sub num">${brl(cm.inter + cm.nubank)}</span></div>
     <div class="cartao" style="margin-top:10px"><ul class="lista">${linhaFatura('Inter', cm.inter, d.cartoes.venc.inter, d.cartoes.limites.inter, k)}${linhaFatura('Nubank', cm.nubank, d.cartoes.venc.nubank, d.cartoes.limites.nubank, k)}</ul></div>
     <div class="bloco-t"><h2>Contas fixas</h2><span class="sub num">${brl(totFix)}</span></div>
-    <div class="cartao" style="margin-top:10px"><ul class="lista">${fx.map(f => {
+    <div class="cartao" style="margin-top:10px"><ul class="lista">${fx.map((f, i) => {
       const pago = f.pago > 0, atras = !pago && k === d.mesAtual && f.dia && +d.geradoEm.slice(8, 10) > f.dia;
-      return `<li><span class="marca ${pago ? 'ok' : atras ? 'neg' : ''}">${svg(pago ? 'check' : 'relogio')}</span>
+      return `<li class="clic" data-fixa="${i}"><span class="marca ${pago ? 'ok' : atras ? 'neg' : ''}">${svg(pago ? 'check' : 'relogio')}</span>
         <span class="t"><b>${esc(f.nome)}</b><small>${pago ? 'Realizado em ' + dataBr(f.dataPgto) : atras ? 'A realizar · ainda não apareceu no banco (dia ' + f.dia + ')' : f.dia ? 'A realizar · vence por volta do dia ' + f.dia : 'A realizar · recarga quando precisar'}</small></span>
-        <span class="v">${brl(pago ? f.pago : f.previsto)}${pago ? '' : '<small>previsto</small>'}</span></li>`; }).join('')}</ul></div>
+        <span class="v">${brl(pago ? f.pago : f.previsto)}${pago ? '' : '<small>previsto</small>'}</span><span class="seta-d">›</span></li>`; }).join('')}</ul></div>
     <div class="bloco-t"><h2>Despesas por categoria</h2><span class="sub num">${brl(tot)}</span></div>
     <div class="cartao" style="margin-top:10px">${cats.map(x => {
       const pp = x.p ? x.v / x.p * 100 : 0, cl = !x.p ? '' : pp > 100 ? 'neg' : pp > 85 ? 'risco' : 'ok', cic = mapa[x.c] || '';
-      return `<div class="cat"><div class="cat-l"><b>${esc(x.c)}${cic ? `<span class="tag ${cic === 'Eu mereço' ? 'rubi' : cic === 'A classificar' ? '' : 'ouro'}">${esc(cic)}</span>` : ''}</b><span class="num">${est.soPct ? p(x.v) : brl(x.v)}</span></div>
+      return `<div class="cat clic" data-cat="${esc(x.c)}" role="button" tabindex="0"><div class="cat-l"><b>${esc(x.c)}${cic ? `<span class="tag ${cic === 'Eu mereço' ? 'rubi' : cic === 'A classificar' ? '' : 'ouro'}">${esc(cic)}</span>` : ''}</b><span class="num">${est.soPct ? p(x.v) : brl(x.v)}</span></div>
         <div class="barra"><i class="${cl}" style="width:${(x.p ? Math.min(100, pp) : x.v / maxv * 100).toFixed(1)}%"></i></div>
         <small>${x.p ? `${pp.toFixed(0)}% do previsto` : (tot ? (x.v / tot * 100).toFixed(0) + '% das despesas' : '')}</small></div>`; }).join('') || '<p class="sub">Nada lançado neste mês ainda.</p>'}</div>
     <div class="bloco-t"><h2>Lançamentos</h2></div>
@@ -515,11 +535,11 @@ function receitasMes(k) {
   if (!rs.length) return '';
   const ok = rs.filter(x => !x.prev).reduce((s, x) => s + x.valor, 0), falta = rs.filter(x => x.prev).reduce((s, x) => s + x.valor, 0);
   return `<div class="bloco-t"><h2>Receitas do mês</h2><span class="sub num">${brl(ok + falta)}</span></div>
-    <div class="cartao" style="margin-top:10px"><ul class="lista">${rs.map(x => `<li><span class="marca ${x.prev ? 'risco' : 'ok'}">${svg(x.prev ? 'relogio' : 'check')}</span>
+    <div class="cartao" style="margin-top:10px"><ul class="lista">${rs.map(x => `<li class="clic" data-ver="${x.linha}"><span class="marca ${x.prev ? 'risco' : 'ok'}">${svg(x.prev ? 'relogio' : 'check')}</span>
       <span class="t"><b style="white-space:normal">${esc(x.desc.replace(/ \(previsto\)$/, ''))}</b><small>${x.prev ? 'Prevista para ' + dataBr(x.data) + ' · A realizar' : 'Realizado em ' + dataBr(x.data)}</small>
       ${x.prev ? `<button class="pilula" style="margin-top:6px" data-conf="${x.linha}" data-v="${x.valor}">${svg('check')}Recebi</button>` : ''}</span>
       <span class="v ok">${brl(x.valor)}${x.prev ? '<small>previsto</small>' : ''}</span></li>`).join('')}</ul>
-      <p class="nota" style="margin:8px 0 0">Já entrou ${brl(ok)} · a receber ${brl(falta)}. Salário da Adna é trocado sozinho pelo valor real quando cai na conta.</p></div>`;
+      <p class="nota" style="margin:8px 0 0">Já entrou ${brl(ok)} · a receber ${brl(falta)}. Salário da Adna é trocado sozinho pelo valor real quando cai na conta. Toque numa receita para corrigir valor ou data.</p></div>`;
 }
 async function confirmarReceita(b) {
   const atual = (+b.dataset.v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -535,13 +555,13 @@ async function confirmarReceita(b) {
 }
 function linhaFatura(nome, v, venc, lim, k) {
   const p = lim ? v / lim * 100 : 0, c = p >= 90 ? 'neg' : p >= 70 ? 'risco' : 'ok';
-  return `<li><span class="marca">${svg('cartao')}</span><span class="t"><b>${nome}</b><small>Vence dia ${venc} de ${nomeMes(k, true)} · ${p.toFixed(0)}% do limite</small>
-    <div class="barra"><i class="${c}" style="width:${Math.min(100, p)}%"></i></div></span><span class="v">${brl(v)}</span></li>`;
+  return `<li class="clic" data-ext="${nome.toLowerCase()}" data-k="${k}"><span class="marca">${svg('cartao')}</span><span class="t"><b>${nome}</b><small>Vence dia ${venc} de ${nomeMes(k, true)} · ${p.toFixed(0)}% do limite</small>
+    <div class="barra"><i class="${c}" style="width:${Math.min(100, p)}%"></i></div></span><span class="v">${brl(v)}<small>ver compras</small></span><span class="seta-d">›</span></li>`;
 }
 function listaLanc() {
   const q = est.busca.trim().toLowerCase();
-  const l = est.d.recentes.filter(x => !q || (x.desc + ' ' + x.cat + ' ' + x.forma + ' ' + (x.ciclo || '')).toLowerCase().includes(q)).slice(0, 60);
-  return l.map(x => `<li><span class="t"><b>${esc(x.desc)}</b><small>${dataBr(x.data)} · ${esc(x.cat)} · ${esc(x.forma.replace('Cartão ', ''))}${x.parcela ? ' · ' + esc(x.parcela) : ''}
+  const l = todosLanc().filter(x => !q || (x.desc + ' ' + x.cat + ' ' + x.forma + ' ' + (x.ciclo || '')).toLowerCase().includes(q)).sort((a, b) => a.data < b.data ? 1 : a.data > b.data ? -1 : 0).slice(0, 80);
+  return l.map(x => `<li class="clic" data-ver="${x.linha}"><span class="t"><b>${esc(x.desc)}</b><small>${dataBr(x.data)} · ${esc(x.cat)} · ${esc(x.forma.replace('Cartão ', ''))}${x.parcela ? ' · ' + esc(x.parcela) : ''}
       ${x.ciclo ? `<span class="tag ${x.ciclo === 'Eu mereço' ? 'rubi' : x.ciclo === 'A classificar' ? '' : 'ouro'}">${esc(x.ciclo)}</span>` : ''}</small></span>
     <span class="v ${x.tipo === 'Receita' ? 'ok' : ''}">${x.tipo === 'Despesa' ? '' : '+'}${brl(x.valor)}<small>${esc(x.status || '')}</small></span></li>`).join('') || '<li class="sub">Nenhum lançamento encontrado.</li>';
 }
@@ -551,7 +571,7 @@ function telaCartoes() {
   const d = est.d, k = mesK(), c = d.cartoes, cm = c.meses.find(x => x.mes === k) || {};
   const cartao = (cls, nome, v, lanc, lim, venc, fech) => {
     const p = lim ? v / lim * 100 : 0, cl = p >= 90 ? 'neg' : p >= 70 ? 'risco' : 'ok';
-    return `<div class="cc ${cls}"><div class="nome"><i></i>${nome}</div><div class="valor">${brl(v)}</div>
+    return `<div class="cc ${cls} clic" data-ext="${cls}" data-k="${k}" role="button" tabindex="0"><div class="nome"><i></i>${nome}<span class="ver-ext">Ver compras ›</span></div><div class="valor">${brl(v)}</div>
       <div class="info">${lanc ? 'Fatura de ' + nomeMes(k, true) : 'Só parcelas já assumidas'} · vence dia ${venc}</div>
       <div class="barra"><i class="${cl}" style="width:${Math.min(100, p)}%"></i></div>
       <div class="info" style="margin-top:6px">${p.toFixed(1).replace('.', ',')}% do limite · fecha dia ${fech}</div></div>`;
@@ -927,6 +947,145 @@ function abrirLancCom(valor, ciclo) {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-acao="pagar"],[data-acao="saude"]'); if (!b) return;
   if (b.dataset.acao === 'pagar') abrirLancCom(+b.dataset.v, 'Investimento'); else abrirSaude();
+});
+
+// ---------------- EXTRATO E DETALHE (tudo clicável e editável, sem precisar abrir o banco)
+const ORIGEM = { banco: 'Veio do banco pela Pluggy', manual: 'Lançado à mão', previsto: 'Previsto: ainda não entrou', confirmado: 'Confirmado no app' };
+const tagCiclo = c => c ? `<span class="tag ${c === 'Eu mereço' ? 'rubi' : c === 'A classificar' ? '' : 'ouro'}">${esc(c)}</span>` : '';
+function todosLanc() {
+  const d = est.d; if (d.extrato) return d.extrato;
+  const vistos = new Set(), out = [];
+  [...(d.receitas || []), ...(d.recentes || [])].forEach(x => { if (!vistos.has(x.linha)) { vistos.add(x.linha); out.push(Object.assign({ fatura: x.comp, origem: x.prev ? 'previsto' : x.pluggy ? 'banco' : 'manual' }, x)); } });
+  return out;
+}
+const acharLanc = linha => todosLanc().find(x => x.linha === +linha);
+const sinal = x => x.tipo === 'Receita' ? 1 : x.tipo === 'Estorno' ? -1 : 1;
+function itemExtrato(x, mostraForma) {
+  const neg = x.tipo === 'Estorno', rec = x.tipo === 'Receita';
+  return `<li class="clic" data-ver="${x.linha}"><span class="t"><b>${esc(x.desc)}</b><small>${esc(x.cat || '—')}${x.parcela ? ' · parcela ' + esc(x.parcela) : ''}${mostraForma ? ' · ' + esc(x.forma.replace('Cartão ', '')) : ''} ${tagCiclo(x.ciclo)}</small></span>
+    <span class="v ${rec ? 'ok' : neg ? 'ok' : ''}">${rec || neg ? '+' : ''}${est.soPct ? '•••' : brl(x.valor)}<small>${x.origem === 'previsto' || x.status === 'A realizar' ? 'a realizar' : ''}</small></span><span class="seta-d">›</span></li>`;
+}
+// lista estilo extrato do banco: agrupada por dia, com o peso de cada ciclo no topo
+function abrirExtrato(cfg) {
+  est.pilha = cfg;
+  const itens = cfg.itens.slice().sort((a, b) => a.data < b.data ? 1 : a.data > b.data ? -1 : b.linha - a.linha);
+  const total = itens.reduce((s, x) => s + (x.tipo === 'Estorno' ? -x.valor : x.valor), 0);
+  const porCiclo = {};
+  itens.filter(x => x.tipo !== 'Receita').forEach(x => { const c = x.ciclo || 'A classificar'; porCiclo[c] = (porCiclo[c] || 0) + (x.tipo === 'Estorno' ? -x.valor : x.valor); });
+  const ciclos = Object.entries(porCiclo).filter(e => Math.abs(e[1]) > 0.004).sort((a, b) => b[1] - a[1]);
+  const formas = new Set(itens.map(x => x.forma));
+  let dia = '', corpo = '';
+  itens.forEach(x => {
+    if (x.data !== dia) { dia = x.data; corpo += `<li class="dia">${dataLonga(x.data)}</li>`; }
+    corpo += itemExtrato(x, formas.size > 1);
+  });
+  $('#folha').innerHTML = `<div class="folha-topo" id="ftopo"><div class="alca"></div><div class="lin"><h2>${esc(cfg.titulo)}</h2><button type="button" class="fechar" id="fx" aria-label="Fechar">${svg('x', 2.4)}</button></div></div>
+    <div class="ext-topo"><div><span class="sub">${esc(cfg.sub || '')}</span><div class="num grande-ext">${brl(total)}</div><span class="sub">${itens.length} lançamento${itens.length === 1 ? '' : 's'}</span></div></div>
+    ${ciclos.length && total > 0 ? `<div class="ext-ciclos">${ciclos.map(([c, v]) => `<div><span>${esc(c)}</span><b class="${c === 'Eu mereço' ? 'neg' : c === 'A classificar' ? '' : 'ouro'}">${pct(v / total)}</b><small>${est.soPct ? '' : brl0(v)}</small></div>`).join('')}</div>` : ''}
+    ${cfg.aviso ? `<p class="nota">${cfg.aviso}</p>` : ''}
+    <ul class="lista extrato">${corpo || `<li class="sub">${esc(cfg.vazio || 'Nenhum lançamento.')}</li>`}</ul>
+    <p class="nota">Toque em um lançamento para ver tudo e corrigir.</p>`;
+  $('#fx').onclick = fecharLanc; arrastarParaFechar($('#ftopo'));
+  mostrarFolha(cfg.titulo); $('#folha').scrollTop = cfg.rolagem || 0;
+}
+function dataLonga(s) {
+  if (!s) return 'Sem data';
+  const dt = new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  return ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][dt.getDay()] + ', ' + dt.getDate() + ' de ' + MESL[dt.getMonth()];
+}
+function extratoCartao(qual, k) {
+  const forma = qual === 'inter' ? 'Cartão Inter' : 'Cartão Nubank';
+  const itens = todosLanc().filter(x => x.forma === forma && (x.fatura || x.comp) === k);
+  abrirExtrato({ titulo: 'Fatura ' + (qual === 'inter' ? 'Inter' : 'Nubank'), sub: 'Vence em ' + nomeMes(k, true), itens,
+    vazio: 'Nenhuma compra nesta fatura ainda.', aviso: k > est.d.mesAtual ? 'Fatura futura: mostra as parcelas já assumidas e o que entrou até agora.' : '' });
+}
+function extratoCategoria(cat, k) {
+  const itens = todosLanc().filter(x => x.cat === cat && x.comp === k && x.tipo !== 'Receita');
+  abrirExtrato({ titulo: cat, sub: 'Despesas de ' + nomeMes(k, true), itens, vazio: 'Nada nesta categoria no mês.' });
+}
+function extratoCiclo(ciclo, k) {
+  const itens = todosLanc().filter(x => x.ciclo === ciclo && x.comp === k && x.status !== 'A realizar');
+  abrirExtrato({ titulo: ciclo, sub: 'Realizado em ' + nomeMes(k, true), itens, vazio: 'Nada neste ciclo no mês.' });
+}
+function extratoFixa(i, k) {
+  const f = (est.d.fixas[k] || [])[i]; if (!f) return;
+  const itens = (f.linhas || []).map(acharLanc).filter(Boolean);
+  abrirExtrato({ titulo: f.nome, sub: 'Conta fixa de ' + nomeMes(k, true), itens,
+    vazio: f.dia ? `Ainda não saiu do banco. Previsto ${brl(f.previsto)} por volta do dia ${f.dia}.` : `Ainda não saiu do banco. Previsto ${brl(f.previsto)}.`,
+    aviso: itens.length ? 'De onde saiu: ' + Array.from(new Set(itens.map(x => x.forma))).join(', ') + '.' : '' });
+}
+
+// detalhe completo de um lançamento, com edição
+function abrirDetalhe(linha) {
+  const x = acharLanc(linha); if (!x) { toast('Lançamento não encontrado. Atualize o app.'); return; }
+  const d = est.d, volta = est.pilha && $('#folha').classList.contains('on') ? est.pilha : null;
+  if (volta) volta.rolagem = $('#folha').scrollTop;
+  const rec = x.tipo === 'Receita', doBanco = x.origem === 'banco', prev = x.origem === 'previsto';
+  const cats = rec ? d.listas.receita : d.listas.despesa;
+  const ciclos = rec ? ['Receita'] : CICLOS_DESP;
+  const formas = d.listas.formas;
+  const ed = { ciclo: x.escolha && x.escolha !== 'A classificar' ? x.escolha : x.ciclo, resp: x.resp };
+  const valorBr = v => 'R$ ' + (+v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  $('#folha').innerHTML = `<div class="folha-topo" id="ftopo"><div class="alca"></div><div class="lin">
+      ${volta ? `<button type="button" class="voltar" id="fv">‹ ${esc(volta.titulo)}</button>` : '<h2>Lançamento</h2>'}<button type="button" class="fechar" id="fx" aria-label="Fechar">${svg('x', 2.4)}</button></div></div>
+    <div class="det-topo"><span class="sub">${esc(x.tipo)} · ${esc(ORIGEM[x.origem] || '')}</span>
+      <input id="dv" class="valor-in" inputmode="decimal" value="${valorBr(x.valor)}" aria-label="Valor">
+      ${doBanco ? '<p class="nota" style="margin-top:4px">Valor que o banco mandou. Corrija só se o extrato do banco mostrar outro valor.</p>' : ''}</div>
+    <form id="fd">
+    <div class="campo"><label for="dd">Descrição</label><input id="dd" maxlength="120" value="${esc(x.desc)}" ${prev ? 'disabled' : ''}></div>
+    ${prev ? '<p class="nota" style="margin-top:4px">A descrição do previsto fica fixa: é por ela que o app troca pelo salário real quando cai.</p>' : ''}
+    <div class="campo"><label for="dt">Data</label><input id="dt" type="date" value="${x.data}"></div>
+    <div class="campo"><label for="dc">Categoria</label><select id="dc">${cats.map(c => `<option ${c === x.cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}${cats.includes(x.cat) ? '' : `<option selected>${esc(x.cat)}</option>`}</select></div>
+    ${rec ? '' : `<div class="campo"><label>Ciclo</label><div class="chips ciclo" role="group" aria-label="Ciclo">${ciclos.map(c => `<button type="button" data-g="ciclo" data-v="${esc(c)}" aria-pressed="${c === ed.ciclo}">${esc(c)}</button>`).join('')}</div></div>`}
+    <div class="campo"><label>Quem</label><div class="seg" role="group" aria-label="Quem">${d.listas.resp.map(o => `<button type="button" data-g="resp" data-v="${esc(o)}" aria-pressed="${o === x.resp}">${esc(o)}</button>`).join('')}</div></div>
+    <div class="campo"><label for="df">De onde saiu</label><select id="df" ${doBanco ? 'disabled' : ''}>${formas.map(f => `<option ${f === x.forma ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select></div>
+    <div class="det-info">
+      ${x.fatura && /Cartão/.test(x.forma) ? `<div><span>Fatura</span><b>${nomeMes(x.fatura, true)}</b></div>` : ''}
+      ${x.parcela ? `<div><span>Parcela</span><b>${esc(x.parcela)}</b></div>` : ''}
+      <div><span>Situação</span><b>${esc(x.status || (prev ? 'A realizar' : 'Realizado'))}</b></div>
+      <div><span>Conta no mês de</span><b>${x.comp ? nomeMes(x.comp, true) : '—'}</b></div></div>
+    <p class="erro" id="derr"></p>
+    <button class="btn" type="submit" id="ds">Salvar alterações</button></form>`;
+  $('#folha').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { ed[b.dataset.g] = b.dataset.v; b.parentElement.querySelectorAll('[data-g]').forEach(y => y.setAttribute('aria-pressed', y === b)); });
+  $('#dv').oninput = e => { const n = e.target.value.replace(/\D/g, ''); e.target.value = n ? 'R$ ' + (+n / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : ''; };
+  $('#fx').onclick = fecharLanc; arrastarParaFechar($('#ftopo'));
+  if (volta) $('#fv').onclick = () => abrirExtrato(volta);
+  $('#fd').onsubmit = async e => {
+    e.preventDefault();
+    const campos = {}, err = $('#derr');
+    const v = +($('#dv').value.replace(/\D/g, '')) / 100;
+    if (!(v > 0)) { err.textContent = 'Informe o valor.'; return; }
+    if (Math.abs(v - x.valor) > 0.004) campos.valor = v;
+    if (!prev && $('#dd').value.trim() !== x.desc) campos.desc = $('#dd').value.trim();
+    if ($('#dt').value && $('#dt').value !== x.data) campos.data = $('#dt').value;
+    if ($('#dc').value !== x.cat) campos.cat = $('#dc').value;
+    if (!rec && ed.ciclo && ed.ciclo !== x.ciclo && ed.ciclo !== x.escolha) campos.ciclo = ed.ciclo;
+    if (ed.resp !== x.resp) campos.resp = ed.resp;
+    if (!doBanco && $('#df').value !== x.forma) campos.forma = $('#df').value;
+    if (!Object.keys(campos).length) { if (volta) abrirExtrato(volta); else fecharLanc(); return; }
+    const b = $('#ds'); b.disabled = true; b.textContent = 'Salvando…'; err.textContent = '';
+    try {
+      if (!DEMO) {
+        const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: chave(), acao: 'editar', e: { linha: x.linha, descAntes: x.desc, campos } }) });
+        const j = await r.json(); if (!j.ok) throw new Error(j.erro);
+      }
+      if ('ciclo' in campos) { x.escolha = campos.ciclo; x.ciclo = campos.ciclo; }
+      ['valor', 'desc', 'data', 'cat', 'resp', 'forma'].forEach(c => { if (c in campos) x[c] = campos[c]; });
+      toast('Salvo na planilha');
+      if (volta) abrirExtrato(volta); else fecharLanc();
+      if (!DEMO) carregar();
+    } catch (z) { err.textContent = 'Não salvou: ' + (z.message || 'sem conexão'); b.disabled = false; b.textContent = 'Salvar alterações'; }
+  };
+  mostrarFolha('Lançamento');
+  $('#folha').scrollTop = 0;
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-conf]')) return;          // botão "Recebi" tem ação própria
+  const v = e.target.closest('[data-ver]'); if (v) { if (!$('#folha').contains(v)) est.pilha = null; abrirDetalhe(v.dataset.ver); return; }
+  const c = e.target.closest('[data-ext]'); if (c) { extratoCartao(c.dataset.ext, c.dataset.k || mesK()); return; }
+  const g = e.target.closest('[data-cat]'); if (g) { extratoCategoria(g.dataset.cat, mesK()); return; }
+  const f = e.target.closest('[data-fixa]'); if (f) { extratoFixa(+f.dataset.fixa, mesK()); return; }
+  const y = e.target.closest('[data-cic]'); if (y && est.per !== 'ano') { extratoCiclo(y.dataset.cic, mesK()); return; }
 });
 
 (function iniciar() {
