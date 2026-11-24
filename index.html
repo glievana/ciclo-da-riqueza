@@ -197,6 +197,9 @@ button,.per,.aba,.chips button,.metas button{touch-action:manipulation}
 .quem button{border:1px solid var(--linha);background:var(--grafite);border-radius:14px;padding:14px;font-size:16px;font-weight:600}
 .quem button[aria-pressed="true"]{border-color:var(--ouro);color:var(--ouro);background:rgba(228,167,60,.08)}
 .carregando{opacity:.55;transition:opacity .2s}
+#sync.girando svg{animation:gira 1s linear infinite;color:var(--ouro)}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#sync.girando svg{animation:none}}
 .topo .ola{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;color:var(--cinza);font-size:12.5px;text-align:left}
 .ola .pt{flex:0 0 8px;height:8px;border-radius:50%;background:var(--cinza)}
 .ola .pt.ok{background:var(--ok)} .ola .pt.risco{background:var(--risco)} .ola .pt.neg{background:var(--neg);box-shadow:0 0 0 3px rgba(229,83,75,.25)}
@@ -309,10 +312,12 @@ async function buscar() {
   if (!j.ok) throw new Error(j.erro === 'chave' ? 'chave' : j.erro || 'Falha ao ler a planilha');
   return j.dados;
 }
-async function carregar(manual) {
-  const m = $('main'); if (m) m.classList.add('carregando');
+async function carregar(manual, silencioso) {
+  const m = $('main'); if (m && !silencioso) m.classList.add('carregando');
   try {
-    const d = await buscar(); est.d = d; try { localStorage.setItem(LS.dados, JSON.stringify(d)); } catch (x) {}
+    const d = await buscar();
+    if (silencioso && (gravando || filaGrava.length)) return;   // chegou dado velho enquanto ainda grava: espera a próxima
+    est.d = d; try { localStorage.setItem(LS.dados, JSON.stringify(d)); } catch (x) {}
     if (!est.per || (est.per !== 'ano' && !d.meses.some(x => x.mes === est.per))) est.per = d.mesAtual;
     render(); if (manual) toast('Atualizado com a planilha');
     if (!est.linkFeito) { est.linkFeito = true; abrirPeloLink(); }
@@ -321,6 +326,25 @@ async function carregar(manual) {
     if (est.d) { render(); toast('Sem conexão: mostrando os últimos números'); } else login('Não deu para falar com a planilha agora. Verifique a internet.');
   } finally { const m2 = $('main'); if (m2) m2.classList.remove('carregando'); }
 }
+// ---------------- gravação em segundo plano: a tela responde na hora e a planilha é gravada por trás, em ordem
+const filaGrava = []; let gravando = false;
+function gravarFundo(corpo, desfazer) { filaGrava.push({ corpo, desfazer }); processarGrava(); }
+async function processarGrava() {
+  if (gravando) return; gravando = true; indicarSalvando(true);
+  while (filaGrava.length) {
+    const t = filaGrava.shift();
+    try {
+      if (!DEMO) {
+        const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ k: chave() }, t.corpo)) });
+        const j = await r.json(); if (!j.ok) throw new Error(j.erro);
+      }
+    } catch (x) { if (t.desfazer) t.desfazer(x); render(); toast('Não salvou: ' + (x.message || 'sem conexão')); }
+  }
+  gravando = false; indicarSalvando(false);
+  clearTimeout(processarGrava.t); processarGrava.t = setTimeout(() => { if (!gravando && !filaGrava.length && !DEMO) carregar(false, true); }, 600);
+}
+function indicarSalvando(on) { const b = $('#sync'); if (b) { b.classList.toggle('girando', on); b.setAttribute('aria-label', on ? 'Salvando na planilha' : 'Atualizar com a planilha'); } }
+window.addEventListener('beforeunload', e => { if (gravando || filaGrava.length) { e.preventDefault(); e.returnValue = ''; } });
 function sair() { [LS.k, LS.nome, LS.resp, LS.dados].forEach(k => localStorage.removeItem(k)); est.d = null; login(); }
 
 // ---------------- login
@@ -545,13 +569,12 @@ async function confirmarReceita(b) {
   const atual = (+b.dataset.v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   const txt = prompt('Quanto entrou de verdade? (R$)', atual); if (txt == null) return;
   const v = +String(txt).replace(/[^\d,]/g, '').replace(',', '.'); if (!(v > 0)) { toast('Valor inválido'); return; }
-  if (DEMO) { toast('Receita confirmada (demonstração)'); return; }
-  b.disabled = true;
-  try {
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: chave(), acao: 'confirmar', linha: +b.dataset.conf, valor: v, data: est.d.geradoEm.slice(0, 10) }) });
-    const j = await r.json(); if (!j.ok) throw new Error(j.erro);
-    toast('Receita confirmada na planilha'); carregar();
-  } catch (x) { toast('Não confirmou: ' + (x.message || 'sem conexão')); b.disabled = false; }
+  const linha = +b.dataset.conf, hoje = est.d.geradoEm.slice(0, 10);
+  const alvos = [...(est.d.receitas || []), ...(est.d.extrato || [])].filter(x => x.linha === linha);
+  const antes = alvos.map(x => Object.assign({}, x));
+  alvos.forEach(x => Object.assign(x, { prev: false, origem: 'confirmado', status: 'Realizado', valor: v, data: hoje }));
+  render(); toast('Receita confirmada');
+  gravarFundo({ acao: 'confirmar', linha, valor: v, data: hoje }, () => alvos.forEach((x, i) => Object.assign(x, antes[i])));
 }
 function linhaFatura(nome, v, venc, lim, k) {
   const p = lim ? v / lim * 100 : 0, c = p >= 90 ? 'neg' : p >= 70 ? 'risco' : 'ok';
@@ -696,7 +719,7 @@ function abrirLancManter() { const v = $('#lv').value, ds = $('#ld').value, f = 
 function fecharLanc() {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   const f = $('#folha'); f.style.transform = ''; f.classList.remove('on'); $('#veu').classList.remove('on');
-  if (est.fila) { const mudou = est.fila.feitos > 0; est.fila = null; filaEnviar().then(() => { if (mudou) carregar(); }); }
+  if (est.fila) { const mudou = est.fila.feitos > 0; est.fila = null; filaEnviar().then(() => { if (mudou) carregar(false, true); }); }
   if (document.body.classList.contains('travado')) { document.body.classList.remove('travado'); document.body.style.top = ''; scrollTo(0, est.rolagem || 0); }
 }
 // puxar a alça para baixo fecha a folha (como nos apps do iPhone)
@@ -715,13 +738,11 @@ async function salvarLanc(e) {
   if (novo.tipo === 'Despesa' && !novo.ciclo) { err.textContent = 'Escolha o ciclo da despesa.'; return; }
   const l = { tipo: novo.tipo, valor, desc: $('#ld').value.trim(), cat: novo.cat, ciclo: novo.tipo === 'Receita' ? 'Receita' : novo.ciclo, resp: novo.resp, forma: $('#lf').value, data: $('#lt').value };
   novo.forma = l.forma;
-  if (DEMO) { fecharLanc(); toast('Salvo na planilha (demonstração)'); return; }
-  const b = $('#lb'); b.disabled = true; b.textContent = 'Salvando…'; err.textContent = '';
-  try {
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: chave(), acao: 'lancar', l }) });
-    const j = await r.json(); if (!j.ok) throw new Error(j.erro);
-    fecharLanc(); toast('Salvo na planilha'); carregar();
-  } catch (x) { err.textContent = 'Não salvou: ' + (x.message || 'sem conexão') + '. Tente de novo.'; b.disabled = false; b.textContent = 'Salvar na planilha'; }
+  fecharLanc(); toast('Lançado: ' + (l.desc || l.cat));
+  gravarFundo({ acao: 'lancar', l }, () => {   // se não gravar, reabre com tudo preenchido para tentar de novo
+    Object.assign(novo, { tipo: l.tipo, cat: l.cat, ciclo: l.ciclo, resp: l.resp, forma: l.forma });
+    setTimeout(() => { abrirLanc(); $('#lv').value = 'R$ ' + l.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }); $('#ld').value = l.desc; $('#lt').value = l.data; $('#lerr').textContent = 'Não foi para a planilha. Confira e toque em Salvar de novo.'; }, 300);
+  });
 }
 document.addEventListener('click', async e => {
   const c = e.target.closest('[data-conf]'); if (c) { confirmarReceita(c); return; }
@@ -729,12 +750,8 @@ document.addEventListener('click', async e => {
   const v = +b.dataset.m, antes = est.d.ciclo.meta;
   if (Math.abs(v - antes) < 1e-6) return;
   est.d.ciclo.meta = v; render();              // muda na hora; a planilha é gravada em segundo plano
-  if (DEMO) { toast('Meta alterada (demonstração)'); return; }
-  try {
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: chave(), acao: 'meta', meta: v }) });
-    const j = await r.json(); if (!j.ok) throw new Error(j.erro);
-    toast('Meta salva: ' + pct(v)); carregar();
-  } catch (x) { est.d.ciclo.meta = antes; render(); toast('Não salvou a meta: ' + (x.message || 'sem conexão')); }
+  toast('Meta: ' + pct(v));
+  gravarFundo({ acao: 'meta', meta: v }, () => { est.d.ciclo.meta = antes; });
 });
 
 // ---------------- FILA DE CLASSIFICAÇÃO (um toque por lançamento; o app aprende pela descrição)
@@ -1063,18 +1080,18 @@ function abrirDetalhe(linha) {
     if (ed.resp !== x.resp) campos.resp = ed.resp;
     if (!doBanco && $('#df').value !== x.forma) campos.forma = $('#df').value;
     if (!Object.keys(campos).length) { if (volta) abrirExtrato(volta); else fecharLanc(); return; }
-    const b = $('#ds'); b.disabled = true; b.textContent = 'Salvando…'; err.textContent = '';
-    try {
-      if (!DEMO) {
-        const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: chave(), acao: 'editar', e: { linha: x.linha, descAntes: x.desc, campos } }) });
-        const j = await r.json(); if (!j.ok) throw new Error(j.erro);
-      }
-      if ('ciclo' in campos) { x.escolha = campos.ciclo; x.ciclo = campos.ciclo; }
-      ['valor', 'desc', 'data', 'cat', 'resp', 'forma'].forEach(c => { if (c in campos) x[c] = campos[c]; });
-      toast('Salvo na planilha');
-      if (volta) abrirExtrato(volta); else fecharLanc();
-      if (!DEMO) carregar();
-    } catch (z) { err.textContent = 'Não salvou: ' + (z.message || 'sem conexão'); b.disabled = false; b.textContent = 'Salvar alterações'; }
+    // muda na hora em todas as listas do app; a planilha é gravada por trás
+    const copias = [...(est.d.extrato || []), ...(est.d.receitas || []), ...(est.d.recentes || [])].filter(y => y.linha === x.linha);
+    if (!copias.includes(x)) copias.push(x);
+    const antes = copias.map(y => Object.assign({}, y)), descAntes = x.desc;
+    copias.forEach(y => {
+      if ('ciclo' in campos) { y.escolha = campos.ciclo; y.ciclo = campos.ciclo; }
+      ['valor', 'desc', 'data', 'cat', 'resp', 'forma'].forEach(c => { if (c in campos) y[c] = campos[c]; });
+    });
+    gravarFundo({ acao: 'editar', e: { linha: x.linha, descAntes, campos } }, () => copias.forEach((y, i) => Object.assign(y, antes[i])));
+    toast('Alteração feita');
+    if (volta) abrirExtrato(volta); else fecharLanc();
+    render();
   };
   mostrarFolha('Lançamento');
   $('#folha').scrollTop = 0;
