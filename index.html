@@ -207,6 +207,9 @@ button,.per,.aba,.chips button,.metas button{touch-action:manipulation}
 .cartao h3{font-family:var(--tit);font-size:16px;margin:0 0 4px}
 .aviso.pague{border-color:rgba(228,167,60,.6);background:linear-gradient(135deg,#231C10,#191613)}
 .aviso.pague .btn{padding:12px}
+.aviso.pague{position:relative;padding-right:44px}
+.fechar-aviso{position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;border:1px solid var(--linha);background:var(--carvao);color:var(--cinza);display:grid;place-items:center;padding:0}
+.fechar-aviso svg{width:16px;height:16px}
 .clic{cursor:pointer;-webkit-tap-highlight-color:rgba(228,167,60,.15)}
 .lista li.clic:active,.cat.clic:active{background:rgba(255,255,255,.03)}
 .seta-d{color:var(--cinza);font-size:20px;margin-left:-4px}
@@ -995,7 +998,9 @@ function pagueSe() {
 }
 function cartaoPagueSe() {
   const p = pagueSe(); if (!p) return '';
-  return `<div class="cartao aviso pague"><span class="ic">${svg('trofeu')}</span><div><b>O salário caiu. Pague-se primeiro.</b>
+  const id = p.ult.linha + '|' + p.ult.data;
+  if (localStorage.getItem('cr_pague_x') === id) return '';   // fechado neste salário; volta no próximo
+  return `<div class="cartao aviso pague"><button type="button" class="fechar-aviso" data-acao="pague-x" data-id="${esc(id)}" aria-label="Fechar aviso">${svg('x', 2.2)}</button><span class="ic">${svg('trofeu')}</span><div><b>O salário caiu. Pague-se primeiro.</b>
     ${esc(p.ult.desc)} entrou dia ${dataBr(p.ult.data)}. Pela meta de ${pct(est.d.ciclo.meta)}, separem ${est.soPct ? pct(est.d.ciclo.meta) + ' do que entrou' : brl(p.falta)} para investir antes de gastar.
     <button type="button" class="btn" data-acao="pagar" data-v="${p.falta.toFixed(2)}" style="margin-top:12px">Já investi: lançar</button></div></div>`;
 }
@@ -1005,6 +1010,8 @@ function abrirLancCom(valor, ciclo) {
   if (ciclo === 'Investimento' && !$('#ld').value) $('#ld').value = 'Aporte do mês';
 }
 document.addEventListener('click', e => {
+  const fx = e.target.closest('[data-acao="pague-x"]');
+  if (fx) { localStorage.setItem('cr_pague_x', fx.dataset.id); fx.closest('.aviso').remove(); toast('Aviso fechado. Volta no próximo salário.'); return; }
   const b = e.target.closest('[data-acao="pagar"],[data-acao="saude"]'); if (!b) return;
   if (b.dataset.acao === 'pagar') abrirLancCom(+b.dataset.v, 'Investimento'); else abrirSaude();
 });
