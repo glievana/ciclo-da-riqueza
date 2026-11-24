@@ -197,6 +197,13 @@ button,.per,.aba,.chips button,.metas button{touch-action:manipulation}
 .quem button{border:1px solid var(--linha);background:var(--grafite);border-radius:14px;padding:14px;font-size:16px;font-weight:600}
 .quem button[aria-pressed="true"]{border-color:var(--ouro);color:var(--ouro);background:rgba(228,167,60,.08)}
 .carregando{opacity:.55;transition:opacity .2s}
+.topo .ola{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;color:var(--cinza);font-size:12.5px;text-align:left}
+.ola .pt{flex:0 0 8px;height:8px;border-radius:50%;background:var(--cinza)}
+.ola .pt.ok{background:var(--ok)} .ola .pt.risco{background:var(--risco)} .ola .pt.neg{background:var(--neg);box-shadow:0 0 0 3px rgba(229,83,75,.25)}
+#folha .lista .t small{display:block;margin-top:2px}
+.cartao h3{font-family:var(--tit);font-size:16px;margin:0 0 4px}
+.aviso.pague{border-color:rgba(228,167,60,.6);background:linear-gradient(135deg,#231C10,#191613)}
+.aviso.pague .btn{padding:12px}
 /* fila de classificação e antes de comprar */
 .entrada-rapida{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .entrada-rapida button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--grafite);border:1px solid var(--linha);border-radius:16px;padding:13px;color:var(--marfim);font-size:15px;font-weight:700}
@@ -331,7 +338,7 @@ function login(msg) {
 
 // ---------------- estrutura
 function montar() {
-  $('#raiz').innerHTML = `<header class="topo"><div class="topo-l"><div><h1>Ciclo da Riqueza</h1><div class="ola" id="ola"></div></div>
+  $('#raiz').innerHTML = `<header class="topo"><div class="topo-l"><div><h1>Ciclo da Riqueza</h1><button type="button" class="ola" id="ola" data-acao="saude"></button></div>
       <div class="acoes"><button class="pilula" id="olho"></button><button class="pilula" id="sync" aria-label="Atualizar com a planilha">${svg('sync')}</button><button class="pilula" id="bsair" aria-label="Sair">${svg('sair')}</button></div></div>
       <nav class="periodos" id="per" aria-label="Escolher período"></nav></header>
     <main id="main"></main>
@@ -353,7 +360,9 @@ function irPara(t) { est.tela = t; if (t === 'cartoes' && est.per === 'ano') est
 
 function render() {
   const d = est.d; if (!d) return; if (!$('#main')) montar();
-  $('#ola').textContent = 'Olá, ' + (localStorage.getItem(LS.nome) || '') + ' · planilha às ' + d.geradoEm.slice(11, 16);
+  const sg = saudeGeral();
+  $('#ola').innerHTML = `<i class="pt ${sg.cls}"></i>${esc('Olá, ' + (localStorage.getItem(LS.nome) || '') + ' · planilha às ' + d.geradoEm.slice(11, 16))}`;
+  $('#ola').setAttribute('aria-label', 'Saúde dos dados: ' + sg.t);
   $('#olho').innerHTML = (est.soPct ? svg('olhoX') : svg('olho')) + (est.soPct ? 'Só %' : 'R$');
   $('#olho').setAttribute('aria-pressed', est.soPct);
   $('#olho').setAttribute('aria-label', est.soPct ? 'Valores escondidos. Toque para mostrar em reais' : 'Toque para mostrar só porcentagens');
@@ -448,7 +457,7 @@ function telaCiclo() {
   }
   const pend = m.pendentes && m.pendentes.realizado ? m.pendentes.realizado : 0;
   const prevista = m.base === 'prevista' || (m.ano && est.d.ciclo.meses.some(x => x.base === 'prevista'));
-  return `${diagrama(m)}
+  return `${!m.ano && m.mes === est.d.mesAtual ? cartaoPagueSe() : ''}${diagrama(m)}
     <div class="legenda"><div class="r"><span>Ciclo da riqueza</span><b>${pct(m.pInvestido)}</b><span>volta como receita</span></div>
       <div class="c"><span>Ciclo do consumo</span><b>${pct(m.pEuMereco)}</b><span>vira padrão de vida</span></div></div>
     ${m.ano ? '' : entradaRapida()}
@@ -831,7 +840,7 @@ function resultadoSimul(m) {
 // atalhos pela URL (Siri / tela de início): ?lancar  ?simular  ?classificar
 function abrirPeloLink() {
   const q = new URLSearchParams(location.search); if (!est.d) return;
-  if (q.has('lancar')) { const v = parseFloat(String(q.get('lancar')).replace(',', '.')); abrirLanc(); if (v > 0) $('#lv').value = 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
+  if (q.has('lancar')) { const v = parseFloat(String(q.get('lancar')).replace(',', '.')), c = q.get('ciclo'); abrirLancCom(v, CICLOS_DESP.includes(c) ? c : ''); }
   else if (q.has('simular')) { const v = parseFloat(String(q.get('simular')).replace(',', '.')); if (v > 0) simul.valor = v; abrirSimular(); }
   else if (q.has('classificar')) abrirFila();
   else return;
@@ -847,6 +856,78 @@ function entradaRapida() {
     <button type="button" data-acao="simular">${svg('balanca', 1.8)}Antes de comprar<small>o impacto no ciclo</small></button>
     <button type="button" data-acao="fila" class="${n ? 'pend' : ''}">${svg('fila', 1.8)}${n ? `<span><b>${n}</b> sem ciclo</span>` : 'Classificar'}<small>${n ? 'resolver em 1 toque cada' : 'tudo classificado'}</small></button></div>`;
 }
+
+// ---------------- SAÚDE DOS DADOS (dá para confiar nos números de hoje?)
+const STATUS_PT = { UPDATED: 'Atualizada', UPDATING: 'Atualizando', WAITING_USER_INPUT: 'Esperando vocês', LOGIN_ERROR: 'Senha do banco recusada', OUTDATED: 'Desatualizada' };
+function dataHoraBr(s) { const m = String(s || '').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/); return m ? new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]) : null; }
+function agoraPlanilha() { const g = est.d.geradoEm; return new Date(+g.slice(0, 4), +g.slice(5, 7) - 1, +g.slice(8, 10), +g.slice(11, 13), +g.slice(14, 16)); }
+function horasAtras(h) { return h < 1 ? 'há menos de 1 hora' : h < 48 ? 'há ' + Math.round(h) + ' h' : 'há ' + Math.round(h / 24) + ' dias'; }
+function saudeConexoes() {
+  const s = est.d.saude; if (!s) return null;
+  const agora = agoraPlanilha();
+  return s.conexoes.map(c => {
+    const d = dataHoraBr(c.leitura), h = d ? (agora - d) / 36e5 : null;
+    let cls = 'ok', msg = 'Lendo normalmente';
+    if (/ERROR|OUTDATED/.test(c.status) || (c.detalhe && !/SUCCESS|PARTIAL/.test(c.detalhe))) { cls = 'neg'; msg = 'Precisa reconectar no Meu Pluggy'; }
+    else if (c.status !== 'UPDATED') { cls = 'risco'; msg = STATUS_PT[c.status] || c.status; }
+    else if (h == null || h > 72) { cls = 'neg'; msg = 'O banco não manda dados há mais de 3 dias'; }
+    else if (h > 36) { cls = 'risco'; msg = 'Leitura atrasada'; }
+    return Object.assign({ cls, msg, horas: h }, c);
+  });
+}
+function saudeGeral() {
+  const cs = saudeConexoes(); if (!cs || !cs.length) return { cls: 'risco', t: 'Sem diagnóstico das conexões ainda' };
+  if (cs.some(c => c.cls === 'neg')) return { cls: 'neg', t: 'Uma conexão precisa de atenção' };
+  if (cs.some(c => c.cls === 'risco')) return { cls: 'risco', t: 'Alguma leitura está atrasada' };
+  return { cls: 'ok', t: 'Todas as conexões em dia' };
+}
+function abrirSaude() {
+  const s = est.d.saude || {}, cs = saudeConexoes() || [], g = saudeGeral(), agora = agoraPlanilha();
+  const ultimo = s.ultimoPorForma || {};
+  const formas = ['Cartão Inter', 'Cartão Nubank', 'Pix/Conta'];
+  $('#folha').innerHTML = `<div class="folha-topo" id="ftopo"><div class="alca"></div><div class="lin"><h2>Saúde dos dados</h2><button type="button" class="fechar" id="fx" aria-label="Fechar">${svg('x', 2.4)}</button></div></div>
+    <div class="veredito ${g.cls}"><b>${esc(g.t)}</b>${g.cls === 'ok' ? 'Os números do app batem com o que os bancos mandaram.' : g.cls === 'neg' ? 'Até resolver, os gastos desse banco podem estar faltando no ciclo.' : 'Os números podem estar algumas horas atrás do banco.'}</div>
+    <div class="cartao"><h3>Conexões com os bancos</h3><ul class="lista">${cs.map(c => `<li><span class="marca ${c.cls}">${svg(c.cls === 'ok' ? 'okI' : c.cls === 'neg' ? 'negI' : 'alerta')}</span>
+      <span class="t">${esc(c.banco)}<small>${esc(c.msg)}${c.horas != null ? ' · lido pelo banco ' + horasAtras(c.horas) : ''}</small></span></li>`).join('') || '<li><span class="t">Ainda sem diagnóstico. Ele é atualizado a cada sincronização (7h e 21h).</span></li>'}</ul></div>
+    <div class="cartao"><h3>Último lançamento que chegou sozinho</h3><ul class="lista">${formas.map(f => {
+      const d = ultimo[f], dias = d ? Math.floor((agora - new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10))) / 864e5) : null;
+      const cls = dias == null ? 'risco' : dias > 10 ? 'risco' : 'ok';
+      return `<li><span class="marca ${cls}">${svg(cls === 'ok' ? 'okI' : 'alerta')}</span><span class="t">${esc(f)}<small>${d ? dataBr(d) + (dias === 0 ? ' (hoje)' : dias === 1 ? ' (ontem)' : ' (' + dias + ' dias atrás)') : 'nenhum ainda'}</small></span></li>`;
+    }).join('')}</ul></div>
+    <p class="nota">Última sincronização: ${esc(s.ultimaSync || est.d.ultimaSync || '—')}. A planilha busca os bancos às 7h e às 21h.</p>
+    ${g.cls === 'neg' ? `<p class="nota">Para reconectar: abram o Meu Pluggy com a conta da Adna, entrem no banco marcado em vermelho e refaçam o login. Na próxima sincronização volta ao normal.</p>` : ''}`;
+  $('#fx').onclick = fecharLanc; arrastarParaFechar($('#ftopo'));
+  mostrarFolha('Saúde dos dados');
+}
+
+// ---------------- PAGUE-SE PRIMEIRO (quando o salário cai, separar a meta antes de gastar)
+function pagueSe() {
+  const d = est.d, c = d.ciclo; if (!c) return null;
+  const m = c.meses.find(x => x.mes === d.mesAtual); if (!m || !m.receita) return null;
+  const agora = agoraPlanilha();
+  const reais = (d.receitas || []).filter(r => r.comp === d.mesAtual && !r.prev && r.status === 'Realizado');
+  const recente = reais.filter(r => { const dt = new Date(+r.data.slice(0, 4), +r.data.slice(5, 7) - 1, +r.data.slice(8, 10)); return (agora - dt) / 864e5 <= 5; });
+  if (!recente.length) return null;
+  const entrou = reais.reduce((s, r) => s + r.valor, 0);
+  const falta = Math.max(0, c.meta * entrou - (m.investimento || 0) - (m.alavancagem || 0));
+  if (falta < 1) return null;
+  return { falta, entrou, ult: recente.sort((a, b) => a.data < b.data ? 1 : -1)[0] };
+}
+function cartaoPagueSe() {
+  const p = pagueSe(); if (!p) return '';
+  return `<div class="cartao aviso pague"><span class="ic">${svg('trofeu')}</span><div><b>O salário caiu. Pague-se primeiro.</b>
+    ${esc(p.ult.desc)} entrou dia ${dataBr(p.ult.data)}. Pela meta de ${pct(est.d.ciclo.meta)}, separem ${est.soPct ? pct(est.d.ciclo.meta) + ' do que entrou' : brl(p.falta)} para investir antes de gastar.
+    <button type="button" class="btn" data-acao="pagar" data-v="${p.falta.toFixed(2)}" style="margin-top:12px">Já investi: lançar</button></div></div>`;
+}
+function abrirLancCom(valor, ciclo) {
+  novo.tipo = 'Despesa'; if (ciclo) novo.ciclo = ciclo;
+  abrirLanc(); if (valor > 0) $('#lv').value = 'R$ ' + (+valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  if (ciclo === 'Investimento' && !$('#ld').value) $('#ld').value = 'Aporte do mês';
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-acao="pagar"],[data-acao="saude"]'); if (!b) return;
+  if (b.dataset.acao === 'pagar') abrirLancCom(+b.dataset.v, 'Investimento'); else abrirSaude();
+});
 
 (function iniciar() {
   try { est.d = JSON.parse(localStorage.getItem(LS.dados) || 'null'); } catch (x) { est.d = null; }
