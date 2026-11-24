@@ -226,6 +226,8 @@ button,.per,.aba,.chips button,.metas button{touch-action:manipulation}
 .det-info span{display:block;font-size:12px;color:var(--cinza)} .det-info b{font-size:14.5px}
 .cc .ver-ext{margin-left:auto;font-size:13px;font-weight:600;color:var(--ouro)}
 .campo input:disabled,.campo select:disabled{opacity:.55}
+.diagrama.prev rect{stroke-dasharray:7 5}
+.selo-prev{display:inline-block;margin:6px 2px 0;font-size:12.5px;font-weight:600;color:var(--ouro);border:1px dashed rgba(228,167,60,.6);border-radius:999px;padding:4px 10px}
 /* fila de classificação e antes de comprar */
 .entrada-rapida{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .entrada-rapida button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--grafite);border:1px solid var(--linha);border-radius:16px;padding:13px;color:var(--marfim);font-size:15px;font-weight:700}
@@ -456,11 +458,11 @@ function caixa(x, y, w, h, tipo, titulo, sub, p, v) {
 }
 const seta = (x1, y1, x2, y2, cor = '#E4A73C') => `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="${cor}" stroke-width="1.6" fill="none" marker-end="url(#pt${cor === '#E4A73C' ? 'o' : 'c'})"/>`;
 function diagrama(m) {
-  const fut = m.receita == null, R = m.receita || 0, div = v => (R && v != null ? v / R : null);
+  const fut = m.receita == null, R = m.receita || 0, div = v => (R && v != null ? v / R : null), pv = !!m.previsto;
   const wR = fut ? 0 : (m.pInvestido || 0), wC = fut ? 0 : (m.pEuMereco || 0);
   const sw = w => (1.6 + Math.min(1, w / 0.4) * 7).toFixed(1), op = w => (0.25 + Math.min(1, w / 0.3) * 0.75).toFixed(2);
   const W = 380, bx = 90, bw = 200;
-  return `<svg class="diagrama" viewBox="0 0 ${W} 470" role="img" aria-label="O ciclo do dinheiro com a porcentagem de cada etapa">
+  return `<svg class="diagrama ${pv ? 'prev' : ''}" viewBox="0 0 ${W} 470" role="img" aria-label="${pv ? 'Ciclo previsto: o que já está comprometido em cada etapa' : 'O ciclo do dinheiro com a porcentagem de cada etapa'}">
     <defs><marker id="pto" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9z" fill="#E4A73C"/></marker>
       <marker id="ptc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9z" fill="#9A9187"/></marker>
       <marker id="ptr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9z" fill="#D04A3F"/></marker>
@@ -475,10 +477,38 @@ function diagrama(m) {
     ${caixa(bx, 8, bw, 58, 'cheio', 'RECEITA', 'trabalho + ativos', fut ? null : '100%', m.receita)}
     ${caixa(bx, 94, bw, 58, 'rubi', 'PADRÃO DE VIDA', 'custo mensal da vida', fut ? null : pct(m.pCusto), m.padrao)}
     ${caixa(bx, 180, bw, 58, 'ouro', 'RESULTADO', 'o que sobra', fut ? null : pct(m.pResultado), m.resultado)}
-    ${caixa(18, 284, 168, 60, 'ouro', 'INVESTIMENTO', 'ativos', fut ? null : pct(div(m.investimento)), m.investimento)}
+    ${pv && !m.investimento ? caixa(18, 284, 168, 60, 'ouro', 'INVESTIMENTO', 'meta do desafio', pct(m.meta), null) : caixa(18, 284, 168, 60, 'ouro', 'INVESTIMENTO', 'ativos', fut ? null : pct(div(m.investimento)), m.investimento)}
     ${caixa(196, 284, 166, 60, 'neutro', 'DÍVIDAS', 'uso do crédito', null, null)}
     ${caixa(18, 394, 168, 60, 'ouro', 'ALAVANCAGEM', 'crédito → ativo', fut ? null : pct(div(m.alavancagem)), m.alavancagem)}
     ${caixa(196, 394, 166, 60, 'rubi', 'EU MEREÇO', 'consumo', fut ? null : pct(m.pEuMereco), m.euMereco)}</svg>`;
+}
+// ---------------- CICLO PREVISTO (meses que ainda não aconteceram)
+// Usa só o que já está comprometido: compras lançadas para o mês (com o ciclo de cada uma)
+// + parcelas futuras dos cartões (ciclo herdado da compra original). O resto da receita fica "livre".
+const normDesc = s => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+function cicloPrevisto(m) {
+  const d = est.d, k = m.mes, R = m.receitaPrevista || 0; if (!R) return null;
+  const todos = todosLanc(), por = {};
+  const soma = (c, v) => { por[c] = (por[c] || 0) + v; };
+  const doMes = todos.filter(x => x.comp === k && (x.tipo === 'Despesa' || x.tipo === 'Estorno'));
+  doMes.forEach(x => soma(x.ciclo || 'A classificar', x.tipo === 'Estorno' ? -x.valor : x.valor));
+  // parcelas ainda não lançadas: reparte o total da planilha pelo ciclo da compra de origem
+  const totParc = m.parcelas || 0;
+  if (totParc > 0) {
+    const ativos = (d.parcelas || []).filter(p => p.ultima && p.ultima >= k);
+    const pesos = {}; let tp = 0;
+    ativos.forEach(p => {
+      const chave = normDesc(p.desc).slice(0, 12);
+      const orig = todos.find(x => normDesc(x.desc).slice(0, 12) === chave && x.ciclo && x.ciclo !== 'A classificar');
+      const c = orig ? orig.ciclo : 'A classificar'; pesos[c] = (pesos[c] || 0) + p.valor; tp += p.valor;
+    });
+    if (tp > 0) Object.entries(pesos).forEach(([c, v]) => soma(c, totParc * v / tp)); else soma('A classificar', totParc);
+  }
+  const padrao = por['Padrão de vida'] || 0, eu = por['Eu mereço'] || 0, alav = por['Alavancagem'] || 0, inv = por['Investimento'] || 0, aclass = por['A classificar'] || 0;
+  const total = padrao + eu + alav + inv + aclass, livre = R - total;
+  return { mes: k, previsto: true, receita: R, padrao, euMereco: eu, alavancagem: alav, investimento: inv, aClassificar: aclass,
+    resultado: R - padrao, pCusto: padrao / R, pResultado: (R - padrao) / R, pEuMereco: eu / R, pInvestido: (inv + alav) / R,
+    pClassificar: aclass / R, total, livre, pLivre: livre / R, meta: d.ciclo.meta };
 }
 function atalhoMes() {
   const d = est.d, k = mesK(), m = mesDados(k); if (!m) return '';
@@ -495,7 +525,20 @@ function telaCiclo() {
   const m = cicloPer(); if (!m) return '<p class="nota">A aba Ciclo da planilha ainda não está publicada.</p>';
   const fut = m.receita == null;
   if (fut) {
-    const comp = m.comprometido || 0, prev = m.receitaPrevista || 0;
+    const comp = m.comprometido || 0, prev = m.receitaPrevista || 0, cp = cicloPrevisto(m);
+    if (cp) {
+      const linha = (rot, v, cls, cic) => `<li ${cic ? `class="clic" data-cic="${cic}"` : ''}><span class="t"><b>${rot}</b></span><span class="v ${cls}">${pct(v / cp.receita)}<small>${est.soPct ? '' : brl0(v)}</small></span>${cic ? '<span class="seta-d">›</span>' : ''}</li>`;
+      const cabe = cp.livre >= cp.meta * cp.receita;
+      return `<p class="selo-prev">Previsto · ${esc(nomeMes(m.mes, true))} ainda não aconteceu</p>${diagrama(cp)}
+        <div class="cartao"><h3>${pct(cp.total / cp.receita)} da receita prevista já está comprometida</h3>
+          <p class="sub" style="margin:2px 0 6px">Receita prevista ${est.soPct ? '' : brl0(cp.receita) + ' '}· compras já lançadas e parcelas dos cartões</p>
+          <ul class="lista">${linha('Padrão de vida', cp.padrao, 'neg', 'Padrão de vida')}${cp.euMereco ? linha('Eu mereço', cp.euMereco, 'neg', 'Eu mereço') : ''}${cp.alavancagem ? linha('Alavancagem', cp.alavancagem, 'ouro', 'Alavancagem') : ''}${cp.investimento ? linha('Investimento', cp.investimento, 'ok', 'Investimento') : ''}${cp.aClassificar > 0.5 ? linha('A classificar', cp.aClassificar, '', '') : ''}
+            <li><span class="t"><b>Ainda livre</b><small>mercado, combustível, imprevistos e o investimento</small></span><span class="v ${cp.livre < 0 ? 'neg' : 'ok'}">${pct(cp.pLivre)}<small>${est.soPct ? '' : brl0(cp.livre)}</small></span></li></ul></div>
+        <div class="cartao aviso ${cabe ? '' : 'alerta'}"><span class="ic">${svg(cabe ? 'info' : 'alerta')}</span><div><b>${cabe ? 'A meta de ' + pct(cp.meta) + ' cabe no que está livre.' : 'A meta de ' + pct(cp.meta) + ' não cabe no que está livre.'}</b>
+          ${cabe ? ` Separem ${est.soPct ? pct(cp.meta) + ' da receita' : brl0(cp.meta * cp.receita)} assim que o salário cair; o resto do livre cobre o dia a dia.` : ` Já está comprometido mais do que a receita permite para investir. Segurem novas compras parceladas.`}</div></div>
+        <p class="nota">O previsto mostra só o que já está assumido para o mês. Mercado, combustível e gastos do dia a dia entram conforme acontecem.</p>
+        ${entradaRapida()}${atalhoMes()}`;
+    }
     return `${diagrama(m)}<div class="cartao aviso"><span class="ic">${svg('info')}</span><div><b>${esc(nomeMes(m.mes, true))} ainda não aconteceu.</b>
       ${prev ? ` ${pct(comp / prev)} da receita prevista já está comprometida com parcelas e contas a pagar${est.soPct ? '' : ` (${brl0(comp)} de ${brl0(prev)})`}.` : ''}</div></div>${entradaRapida()}${atalhoMes()}`;
   }
@@ -1021,8 +1064,10 @@ function extratoCategoria(cat, k) {
   abrirExtrato({ titulo: cat, sub: 'Despesas de ' + nomeMes(k, true), itens, vazio: 'Nada nesta categoria no mês.' });
 }
 function extratoCiclo(ciclo, k) {
-  const itens = todosLanc().filter(x => x.ciclo === ciclo && x.comp === k && x.status !== 'A realizar');
-  abrirExtrato({ titulo: ciclo, sub: 'Realizado em ' + nomeMes(k, true), itens, vazio: 'Nada neste ciclo no mês.' });
+  const fut = k > est.d.mesAtual;
+  const itens = todosLanc().filter(x => x.ciclo === ciclo && x.comp === k && (fut || x.status !== 'A realizar'));
+  abrirExtrato({ titulo: ciclo, sub: (fut ? 'Já comprometido em ' : 'Realizado em ') + nomeMes(k, true), itens, vazio: 'Nada lançado neste ciclo para o mês.',
+    aviso: fut ? 'Parcelas dos cartões que ainda não viraram lançamento entram no total do ciclo, mas só aparecem aqui quando a fatura abre.' : '' });
 }
 function extratoFixa(i, k) {
   const f = (est.d.fixas[k] || [])[i]; if (!f) return;
